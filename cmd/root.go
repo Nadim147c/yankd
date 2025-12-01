@@ -37,7 +37,7 @@ var Command = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 
-		level := log.ErrorLevel - (log.Level(viper.GetInt("verbose") * 4))
+		level := log.WarnLevel - (log.Level(viper.GetInt("verbose") * 4))
 		if viper.GetBool("quiet") {
 			level = math.MaxInt
 		}
