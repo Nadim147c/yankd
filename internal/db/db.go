@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Nadim147c/yankd/internal/db/binds"
 	"github.com/Nadim147c/yankd/pkgs/clipboard"
 	"github.com/glebarez/sqlite"
 	"github.com/spf13/viper"
@@ -100,6 +101,25 @@ func Search(ctx context.Context, query string) ([]clipboard.Clip, error) {
 
 	slog.Debug("search completed", "query", query, "results", len(results))
 	return results, nil
+}
+
+func Get(ctx context.Context, id uint) (*clipboard.Clip, error) {
+	slog.Debug("searching for clipboard", "id", id)
+
+	db, err := getDB()
+	if err != nil {
+		slog.Error("failed to get database connection", "error", err)
+		return nil, err
+	}
+
+	clip, err := gorm.G[clipboard.Clip](db).Where(binds.Clip.ID.Eq(id)).First(ctx)
+	if err != nil {
+		slog.Error("failed to find clip", "id", id, "error", err)
+		return nil, err
+	}
+
+	slog.Debug("successfully the clip", "id", clip.ID)
+	return &clip, nil
 }
 
 func Insert(ctx context.Context, clip *clipboard.Clip) error {

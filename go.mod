@@ -12,6 +12,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	github.com/zeebo/xxh3 v1.0.3-0.20250724185950-77e65e1f514f
+	gorm.io/cli/gorm v0.2.4
 	gorm.io/gorm v1.31.1
 )
 
