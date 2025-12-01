@@ -14,17 +14,6 @@ import (
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 )
 
-type Clip struct {
-	ID       uint
-	Time     time.Time
-	Text     string
-	Blob     []byte
-	Mime     string
-	Metadata string
-	URL      string
-	BlobPath string
-}
-
 // mimeCategory returns the category of a MIME type
 func mimeCategory(mimeType string) string {
 	parts := strings.Split(mimeType, "/")
