@@ -44,6 +44,10 @@ func NewClient(clips chan Clip) *Client {
 	return c
 }
 
+func (h *Client) Close() error {
+	return h.display.Context().Close()
+}
+
 func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	e protocol.ZwlrDataControlDeviceV1DataOfferEvent,
 ) {
@@ -195,13 +199,20 @@ func Watch(ctx context.Context, clips chan Clip) error {
 
 	slog.Info("clipboard watch initialized, listening for changes")
 
+	go func() {
+		<-ctx.Done()
+		slog.Info("context cancelled → closing wayland display")
+		client.Close()
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			slog.Info("clipboard watch context cancelled")
 			return ctx.Err()
 		default:
-			if err := wlclient.DisplayDispatch(display); err != nil {
+			err := wlclient.DisplayDispatch(display)
+			if err != nil {
 				slog.Error("dispatch failed", "error", err)
 				return fmt.Errorf("dispatch failed: %w", err)
 			}

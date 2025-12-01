@@ -16,10 +16,14 @@ var Watch = &cobra.Command{
 	Use:   "watch",
 	Short: "Watch for clipboard changes and save the history",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
 		ctx := cmd.Context()
 		clips := make(chan clipboard.Clip)
-		go clipboard.Watch(ctx, clips)
+
+		go func() {
+			clipboard.Watch(ctx, clips)
+			close(clips)
+		}()
+
 		for clip := range clips {
 			slog.Debug("Saving content to clipboard history", "mime", clip.Mime)
 			err := db.Insert(ctx, &clip)

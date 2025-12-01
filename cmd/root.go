@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -36,9 +37,6 @@ var Command = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 
-		dbPath := filepath.Join(xdg.DataHome, "yankd")
-		viper.SetDefault("database", dbPath)
-
 		level := log.ErrorLevel - (log.Level(viper.GetInt("verbose") * 4))
 		if viper.GetBool("quiet") {
 			level = math.MaxInt
@@ -51,6 +49,9 @@ var Command = &cobra.Command{
 
 		slog.SetDefault(slog.New(logger))
 
+		dbPath := filepath.Join(xdg.DataHome, "yankd")
+		viper.SetDefault("database", dbPath)
+
 		slog.Info("Logger is has been setup", "level", level)
 
 		return nil
@@ -62,6 +63,7 @@ func Execute(version string) {
 	err := fang.Execute(
 		context.Background(),
 		Command,
+		fang.WithNotifySignal(syscall.SIGINT, syscall.SIGTERM),
 		fang.WithFlagTypes(),
 		fang.WithShorthandPadding(),
 		fang.WithVersion(version),
