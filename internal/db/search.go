@@ -13,10 +13,11 @@ func InitializeFTS(db *gorm.DB) error {
 	// 1️⃣ Create FTS5 virtual table for clips
 	if err := db.Exec(`
         CREATE VIRTUAL TABLE IF NOT EXISTS clip_index USING FTS5(
-            text,
-            metadata,
-            content='clips',
-            content_rowid='id'
+			text,
+			url,
+			metadata,
+			content='clips',
+			content_rowid='id'
         );
     `).Error; err != nil {
 		return fmt.Errorf("failed to create FTS5 table: %w", err)
@@ -26,12 +27,12 @@ func InitializeFTS(db *gorm.DB) error {
 	triggers := []string{
 		// Insert
 		`CREATE TRIGGER IF NOT EXISTS clip_ai AFTER INSERT ON clips BEGIN
-            INSERT INTO clip_index(rowid, text, metadata)
-            VALUES (new.id, new.text, new.metadata);
+            INSERT INTO clip_index(rowid, text, url, metadata)
+            VALUES (new.id, new.text, new.url, new.metadata);
         END;`,
 		// Update
 		`CREATE TRIGGER IF NOT EXISTS clip_au AFTER UPDATE ON clips BEGIN
-            UPDATE clip_index SET text=new.text, metadata=new.metadata
+            UPDATE clip_index SET text=new.text, text=new.url, metadata=new.metadata
             WHERE rowid=new.id;
         END;`,
 		// Delete
