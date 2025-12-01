@@ -28,7 +28,7 @@ func isImageMime(mimeType string) bool {
 	return mimeCategory(mimeType) == "image"
 }
 
-type ClipboardParser struct {
+type clipboardParser struct {
 	offer         *protocol.ZwlrDataControlOfferV1
 	offeredMimes  []string
 	retrievedData map[string][]byte // mimeType -> data
@@ -43,10 +43,10 @@ type selectedMimesType struct {
 	metadata string // text/plain or text/html for metadata
 }
 
-// NewClipboardParser creates a new parser for an offer
-func NewClipboardParser(offer *protocol.ZwlrDataControlOfferV1, mimes []string) *ClipboardParser {
+// newClipboardParser creates a new parser for an offer
+func newClipboardParser(offer *protocol.ZwlrDataControlOfferV1, mimes []string) *clipboardParser {
 	slog.Debug("creating clipboard parser", "offered_mimes_count", len(mimes))
-	return &ClipboardParser{
+	return &clipboardParser{
 		offer:         offer,
 		offeredMimes:  mimes,
 		retrievedData: make(map[string][]byte),
@@ -54,7 +54,7 @@ func NewClipboardParser(offer *protocol.ZwlrDataControlOfferV1, mimes []string) 
 }
 
 // selectMimes determines which MIME types to retrieve
-func (cp *ClipboardParser) selectMimes() {
+func (cp *clipboardParser) selectMimes() {
 	slog.Debug("selecting mime types from offered", "offered_count", len(cp.offeredMimes))
 
 	// Priority order for primary MIME type (prefer image over text)
@@ -127,7 +127,7 @@ func (cp *ClipboardParser) selectMimes() {
 }
 
 // getMimesToRetrieve returns the list of MIME types to fetch
-func (cp *ClipboardParser) getMimesToRetrieve() []string {
+func (cp *clipboardParser) getMimesToRetrieve() []string {
 	var mimes []string
 
 	if cp.selectedMimes.primary != "" {
@@ -145,7 +145,7 @@ func (cp *ClipboardParser) getMimesToRetrieve() []string {
 }
 
 // retrieveData fetches data for a specific MIME type
-func (cp *ClipboardParser) retrieveData(mimeType string) error {
+func (cp *clipboardParser) retrieveData(mimeType string) error {
 	slog.Debug("retrieving data", "mime", mimeType)
 
 	if cp.offer == nil {
@@ -186,7 +186,7 @@ func (cp *ClipboardParser) retrieveData(mimeType string) error {
 }
 
 // RetrieveAll fetches all selected MIME types
-func (cp *ClipboardParser) RetrieveAll() error {
+func (cp *clipboardParser) RetrieveAll() error {
 	slog.Debug("retrieving all selected mime types")
 
 	cp.selectMimes()
@@ -221,7 +221,7 @@ func (cp *ClipboardParser) RetrieveAll() error {
 }
 
 // Parse converts the retrieved data into a Clip struct
-func (cp *ClipboardParser) Parse() (Clip, error) {
+func (cp *clipboardParser) Parse() (Clip, error) {
 	slog.Debug("parsing clipboard data")
 
 	clip := Clip{Time: time.Now()}

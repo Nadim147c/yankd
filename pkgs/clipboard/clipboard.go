@@ -12,12 +12,12 @@ import (
 	"github.com/neurlang/wayland/wlclient"
 )
 
-type MimeHandler struct {
+type mimeHandler struct {
 	mu    sync.Mutex
 	mimes []string
 }
 
-func (h *MimeHandler) HandleZwlrDataControlOfferV1Offer(
+func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 	e protocol.ZwlrDataControlOfferV1OfferEvent,
 ) {
 	h.mu.Lock()
@@ -53,7 +53,7 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 ) {
 	slog.Debug("data offer received", "offer_id", e.Id.Id())
 
-	collector := &MimeHandler{}
+	collector := &mimeHandler{}
 	e.Id.AddOfferHandler(collector)
 
 	if err := wlclient.DisplayRoundtrip(h.display); err != nil {
@@ -71,7 +71,7 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 		collector.mimes,
 	)
 
-	parser := NewClipboardParser(e.Id, collector.mimes)
+	parser := newClipboardParser(e.Id, collector.mimes)
 	clip, err := parser.Parse()
 	if err != nil {
 		slog.Error("failed to parse clipboard content", "offer_id", e.Id.Id(), "error", err)
