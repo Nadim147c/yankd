@@ -5,18 +5,18 @@
 }:
 buildGoModule rec {
   pname = "yankd";
-  version = "0.0.1-dev.1";
+  version = "0-unstable-2025-12-02";
 
   src = fetchFromGitHub {
     owner = "Nadim147c";
     repo = "yankd";
-    rev = "v${version}";
-    hash = "sha256-EjR+c9X01A3wRbP0ng20d120wiZ4xNfQ+HsfjlcoMZE=";
+    rev = "0d54c956d4f612b84defd108c7eaebd479136777";
+    hash = "sha256-mF0jGRyFcX1nvA/0ABsE+ImnwYzlPGDB+HcSPVdvNs0=";
   };
 
-  vendorHash = "sha256-iK/YLHHNFrLyHRuQsAbBQ8qB8PQ98uyYTPWDfsQ14m0=";
+  vendorHash = "sha256-SHzl0X3EqkE0aBHbHFgyeHG6T7j9T3vWaqmZG8x6J2Q=";
 
-  ldflags = ["-s" "-w"];
+  ldflags = ["-s" "-w" "-X" "main.version=${version}"];
 
   meta = {
     description = "A (WIP) wayland native clipboard manager";
