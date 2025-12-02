@@ -1,7 +1,7 @@
 GO       ?= go
 REVIVE   ?= revive
 NAME     ?= yankd
-VERSION  ?= $(shell git describe --tags)
+VERSION  ?= $(shell git describe --tags 2>/dev/null || echo "dev-build")
 PREFIX   ?= /usr/local/
 
 BUILD_DIR ?= build
