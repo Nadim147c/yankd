@@ -14,7 +14,7 @@ func init() {
 
 var watchCommand = &cobra.Command{
 	Use:   "watch",
-	Short: "Watch for clipboard changes and save the history",
+	Short: "Watch for clipboard changes",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
 		clips := make(chan clipboard.Clip)
@@ -23,6 +23,7 @@ var watchCommand = &cobra.Command{
 			clipboard.Watch(ctx, clips)
 			close(clips)
 		}()
+
 		if err := db.InitializeFTS(); err != nil {
 			return err
 		}
