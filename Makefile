@@ -1,4 +1,5 @@
 GO       ?= go
+REVIVE   ?= revive
 NAME     ?= yankd
 VERSION  ?= $(shell git describe --tags)
 PREFIX   ?= /usr/local/
@@ -33,3 +34,6 @@ completions: build
 	$(BUILD_BIN) _carapace zsh  > "$(BUILD_COMPLETION_DIR)/$(NAME).zsh"
 	$(BUILD_BIN) _carapace fish > "$(BUILD_COMPLETION_DIR)/$(NAME).fish"
 
+test:
+	$(GO) test -v ./...
+	$(REVIVE) -config revive.toml -formatter friendly ./...

@@ -9,19 +9,19 @@ import (
 	"gorm.io/gorm"
 )
 
-// InitializeFTS sets up the FTS5 virtual table and triggers
-func InitializeFTS(db *gorm.DB) error {
+// initializeFTS sets up the FTS5 virtual table and triggers
+func initializeFTS(db *gorm.DB) error {
 	slog.Debug("initializing FTS5")
 
 	// Create FTS5 virtual table for clips
 	if err := db.Exec(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS clip_index USING FTS5(
+    CREATE VIRTUAL TABLE IF NOT EXISTS clip_index USING FTS5(
 			text,
 			url,
 			metadata,
 			content='clips',
 			content_rowid='id'
-        );
+    );
     `).Error; err != nil {
 		slog.Error("failed to create FTS5 table", "error", err)
 		return fmt.Errorf("failed to create FTS5 table: %w", err)
@@ -57,11 +57,12 @@ func InitializeFTS(db *gorm.DB) error {
 	return nil
 }
 
-// RebuildIndex rebuilds the FTS index for all existing rows
-func RebuildIndex(db *gorm.DB) error {
+// rebuildIndex rebuilds the FTS index for all existing rows
+func rebuildIndex(db *gorm.DB) error {
 	slog.Debug("rebuilding FTS index")
 
-	if err := db.Exec("INSERT INTO clip_index(clip_index) VALUES('rebuild')").Error; err != nil {
+	err := db.Exec("INSERT INTO clip_index(clip_index) VALUES('rebuild')").Error
+	if err != nil {
 		slog.Error("failed to rebuild FTS index", "error", err)
 		return err
 	}
@@ -70,8 +71,12 @@ func RebuildIndex(db *gorm.DB) error {
 	return nil
 }
 
-// FlexibleSearch searches text + metadata with FTS5 and fallback LIKE
-func FlexibleSearch(ctx context.Context, db *gorm.DB, query string) ([]clipboard.Clip, error) {
+// flexibleSearch searches text + metadata with FTS5 and fallback LIKE
+func flexibleSearch(
+	ctx context.Context,
+	db *gorm.DB,
+	query string,
+) ([]clipboard.Clip, error) {
 	slog.Debug("starting flexible search", "query", query)
 
 	var clips []clipboard.Clip
@@ -79,20 +84,31 @@ func FlexibleSearch(ctx context.Context, db *gorm.DB, query string) ([]clipboard
 
 	// Try FTS5 search first
 	err := db.WithContext(ctx).
-		Raw(`SELECT clips.* FROM clips 
-             JOIN clip_index ON clip_index.rowid = clips.id 
+		Raw(`SELECT clips.* FROM clips
+             JOIN clip_index ON clip_index.rowid = clips.id
              WHERE clip_index MATCH ?`, ftsQuery).
 		Scan(&clips).Error
 
 	if err == nil && len(clips) > 0 {
-		slog.Debug("FTS5 search succeeded", "query", query, "results", len(clips))
+		slog.Debug(
+			"FTS5 search succeeded",
+			"query", query,
+			"results", len(clips),
+		)
 		return clips, nil
 	}
 
 	if err != nil {
-		slog.Debug("FTS5 search failed, falling back to LIKE", "query", query, "error", err)
+		slog.Debug(
+			"FTS5 search failed, falling back to LIKE",
+			"query", query,
+			"error", err,
+		)
 	} else {
-		slog.Debug("FTS5 search returned no results, falling back to LIKE", "query", query)
+		slog.Debug(
+			"FTS5 search returned no results, falling back to LIKE",
+			"query", query,
+		)
 	}
 
 	// Fallback to normal LIKE search
@@ -104,6 +120,40 @@ func FlexibleSearch(ctx context.Context, db *gorm.DB, query string) ([]clipboard
 		return nil, err
 	}
 
-	slog.Debug("fallback LIKE search succeeded", "query", query, "results", len(clips))
+	slog.Debug(
+		"fallback LIKE search succeeded",
+		"query", query,
+		"results", len(clips),
+	)
 	return clips, nil
+}
+
+// Search searches runs full-text serach in database and returns matched items.
+func Search(ctx context.Context, query string) ([]clipboard.Clip, error) {
+	slog.Debug("searching clips", "query", query)
+
+	db, err := GetDB()
+	if err != nil {
+		slog.Error("failed to get database connection", "error", err)
+		return nil, err
+	}
+
+	if err := initializeFTS(db); err != nil {
+		slog.Error("failed to initialize FTS", "error", err)
+		return nil, err
+	}
+
+	if err := rebuildIndex(db); err != nil {
+		slog.Error("failed to rebuild FTS index", "error", err)
+		return nil, err
+	}
+
+	results, err := flexibleSearch(ctx, db, query)
+	if err != nil {
+		slog.Error("search failed", "query", query, "error", err)
+		return nil, err
+	}
+
+	slog.Debug("search completed", "query", query, "results", len(results))
+	return results, nil
 }

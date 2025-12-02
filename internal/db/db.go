@@ -26,15 +26,16 @@ var (
 	once sync.Once
 )
 
-func getDB() (*gorm.DB, error) {
+// GetDB returns creates a sqlite db in disk and return *gorm.DB.
+func GetDB() (*gorm.DB, error) {
 	var err error
 	once.Do(func() {
-		db, err = Connect()
+		db, err = createDB()
 	})
 	return db, err
 }
 
-func Connect() (*gorm.DB, error) {
+func createDB() (*gorm.DB, error) {
 	dbDir := viper.GetString("database")
 	if dbDir == "" {
 		slog.Error("database directory is empty")
@@ -42,7 +43,11 @@ func Connect() (*gorm.DB, error) {
 	}
 
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		slog.Error("failed to create database directory", "path", dbDir, "error", err)
+		slog.Error(
+			"failed to create database directory",
+			"path", dbDir,
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 	slog.Debug("database directory created", "path", dbDir)
@@ -69,50 +74,29 @@ func Connect() (*gorm.DB, error) {
 		slog.Error("failed to auto migrate database", "error", err)
 		return nil, err
 	}
+
+	if err := initializeFTS(db); err != nil {
+		slog.Error("failed to auto migrate database", "error", err)
+		return nil, err
+	}
 	slog.Info("database connected successfully")
 
 	return db, nil
 }
 
-func Search(ctx context.Context, query string) ([]clipboard.Clip, error) {
-	slog.Debug("searching clips", "query", query)
-
-	db, err := getDB()
-	if err != nil {
-		slog.Error("failed to get database connection", "error", err)
-		return nil, err
-	}
-
-	if err := InitializeFTS(db); err != nil {
-		slog.Error("failed to initialize FTS", "error", err)
-		return nil, err
-	}
-
-	if err := RebuildIndex(db); err != nil {
-		slog.Error("failed to rebuild FTS index", "error", err)
-		return nil, err
-	}
-
-	results, err := FlexibleSearch(context.Background(), db, query)
-	if err != nil {
-		slog.Error("search failed", "query", query, "error", err)
-		return nil, err
-	}
-
-	slog.Debug("search completed", "query", query, "results", len(results))
-	return results, nil
-}
-
+// Get returns clip for given id. Returns error if id not exists or db failure.
 func Get(ctx context.Context, id uint) (*clipboard.Clip, error) {
 	slog.Debug("searching for clipboard", "id", id)
 
-	db, err := getDB()
+	db, err := GetDB()
 	if err != nil {
 		slog.Error("failed to get database connection", "error", err)
 		return nil, err
 	}
 
-	clip, err := gorm.G[clipboard.Clip](db).Where(binds.Clip.ID.Eq(id)).First(ctx)
+	clip, err := gorm.G[clipboard.Clip](db).
+		Where(binds.Clip.ID.Eq(id)).
+		First(ctx)
 	if err != nil {
 		slog.Error("failed to find clip", "id", id, "error", err)
 		return nil, err
@@ -122,10 +106,15 @@ func Get(ctx context.Context, id uint) (*clipboard.Clip, error) {
 	return &clip, nil
 }
 
+// Insert inserts given clip to database. Returns error on databse failure.
 func Insert(ctx context.Context, clip *clipboard.Clip) error {
-	slog.Debug("inserting clip", "text-size", len(clip.Text), "blob-size", len(clip.Blob))
+	slog.Debug(
+		"inserting clip",
+		"text-size", len(clip.Text),
+		"blob-size", len(clip.Blob),
+	)
 
-	db, err := getDB()
+	db, err := GetDB()
 	if err != nil {
 		slog.Error("failed to get database connection", "error", err)
 		return err
@@ -150,6 +139,8 @@ func Insert(ctx context.Context, clip *clipboard.Clip) error {
 	return nil
 }
 
+// CreateBlob create a file containing the binary files in database/blob
+// directory.
 func CreateBlob(b []byte) (string, error) {
 	sum := xxh3.Hash128(b).Bytes()
 	id := hex.EncodeToString(sum[:])
@@ -162,7 +153,11 @@ func CreateBlob(b []byte) (string, error) {
 
 	blobDir := filepath.Join(dbDir, "blob")
 	if err := os.MkdirAll(blobDir, 0o755); err != nil {
-		slog.Error("failed to create blob directory", "path", blobDir, "error", err)
+		slog.Error(
+			"failed to create blob directory",
+			"path", blobDir,
+			"error", err,
+		)
 		return "", fmt.Errorf("failed to create blob directory: %w", err)
 	}
 

@@ -44,7 +44,10 @@ type selectedMimesType struct {
 }
 
 // newClipboardParser creates a new parser for an offer
-func newClipboardParser(offer *protocol.ZwlrDataControlOfferV1, mimes []string) *clipboardParser {
+func newClipboardParser(
+	offer *protocol.ZwlrDataControlOfferV1,
+	mimes []string,
+) *clipboardParser {
 	slog.Debug("creating clipboard parser", "offered_mimes_count", len(mimes))
 	return &clipboardParser{
 		offer:         offer,
@@ -55,11 +58,23 @@ func newClipboardParser(offer *protocol.ZwlrDataControlOfferV1, mimes []string) 
 
 // selectMimes determines which MIME types to retrieve
 func (cp *clipboardParser) selectMimes() {
-	slog.Debug("selecting mime types from offered", "offered_count", len(cp.offeredMimes))
+	slog.Debug(
+		"selecting mime types from offered",
+		"offered_count", len(cp.offeredMimes),
+	)
 
 	// Priority order for primary MIME type (prefer image over text)
-	imagePriority := []string{"image/png", "image/jpeg", "image/webp", "image/gif"}
-	textPriority := []string{"text/plain;charset=utf-8", "text/plain", "text/html"}
+	imagePriority := []string{
+		"image/png",
+		"image/jpeg",
+		"image/webp",
+		"image/gif",
+	}
+	textPriority := []string{
+		"text/plain;charset=utf-8",
+		"text/plain",
+		"text/html",
+	}
 	urlPriority := []string{"chromium/x-source-url", "text/x-moz-url"}
 
 	// Select image MIME
@@ -85,7 +100,8 @@ func (cp *clipboardParser) selectMimes() {
 	}
 
 	// Fallback to text/plain if nothing selected
-	if cp.selectedMimes.primary == "" && slices.Contains(cp.offeredMimes, "text/plain") {
+	if cp.selectedMimes.primary == "" &&
+		slices.Contains(cp.offeredMimes, "text/plain") {
 		cp.selectedMimes.text = "text/plain"
 		cp.selectedMimes.primary = "text/plain"
 		slog.Debug("fallback to text/plain mime")
@@ -113,16 +129,11 @@ func (cp *clipboardParser) selectMimes() {
 
 	slog.Debug(
 		"mime selection complete",
-		"primary",
-		cp.selectedMimes.primary,
-		"image",
-		cp.selectedMimes.image,
-		"text",
-		cp.selectedMimes.text,
-		"url",
-		cp.selectedMimes.urlMime,
-		"metadata",
-		cp.selectedMimes.metadata,
+		"primary", cp.selectedMimes.primary,
+		"image", cp.selectedMimes.image,
+		"text", cp.selectedMimes.text,
+		"url", cp.selectedMimes.urlMime,
+		"metadata", cp.selectedMimes.metadata,
 	)
 }
 
@@ -133,10 +144,14 @@ func (cp *clipboardParser) getMimesToRetrieve() []string {
 	if cp.selectedMimes.primary != "" {
 		mimes = append(mimes, cp.selectedMimes.primary)
 	}
-	if cp.selectedMimes.urlMime != "" && cp.selectedMimes.urlMime != cp.selectedMimes.primary {
+
+	if cp.selectedMimes.urlMime != "" &&
+		cp.selectedMimes.urlMime != cp.selectedMimes.primary {
 		mimes = append(mimes, cp.selectedMimes.urlMime)
 	}
-	if cp.selectedMimes.metadata != "" && cp.selectedMimes.metadata != cp.selectedMimes.primary {
+
+	if cp.selectedMimes.metadata != "" &&
+		cp.selectedMimes.metadata != cp.selectedMimes.primary {
 		mimes = append(mimes, cp.selectedMimes.metadata)
 	}
 
@@ -181,7 +196,11 @@ func (cp *clipboardParser) retrieveData(mimeType string) error {
 	}
 
 	cp.retrievedData[mimeType] = data
-	slog.Debug("data retrieved successfully", "mime", mimeType, "size_bytes", len(data))
+	slog.Debug(
+		"data retrieved successfully",
+		"mime", mimeType,
+		"size_bytes", len(data),
+	)
 	return nil
 }
 

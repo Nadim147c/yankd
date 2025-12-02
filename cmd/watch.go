@@ -9,13 +9,13 @@ import (
 )
 
 func init() {
-	Command.AddCommand(Watch)
+	Command.AddCommand(watchCommand)
 }
 
-var Watch = &cobra.Command{
+var watchCommand = &cobra.Command{
 	Use:   "watch",
 	Short: "Watch for clipboard changes and save the history",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
 		clips := make(chan clipboard.Clip)
 

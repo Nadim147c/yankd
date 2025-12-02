@@ -11,11 +11,12 @@ import (
 )
 
 func init() {
-	Command.AddCommand(Set)
+	Command.AddCommand(setCommand)
 }
 
 // FIXME: please fix me......
-var Set = &cobra.Command{
+
+var setCommand = &cobra.Command{
 	Use:   "set",
 	Short: "Set content of given id to clipboard",
 	Args:  cobra.ExactArgs(1),

@@ -12,6 +12,9 @@ import (
 	"github.com/neurlang/wayland/wlclient"
 )
 
+// InterfaceName is the wlr-data-control-unstable-v1 interface name
+const InterfaceName = "zwlr_data_control_manager_v1"
+
 type mimeHandler struct {
 	mu    sync.Mutex
 	mimes []string
@@ -26,17 +29,19 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 	slog.Debug("mime type added", "mime", e.MimeType, "total", len(h.mimes))
 }
 
+// Client is wayland that handle wayland clipboard protocol
 type Client struct {
 	display       *wl.Display
 	registry      *wl.Registry
 	manager       *protocol.ZwlrDataControlManagerV1
-	clips         chan Clip
+	clips         chan<- Clip
 	seatGlobals   map[uint32]uint32
 	deviceName    uint32
 	deviceVersion uint32
 }
 
-func NewClient(clips chan Clip) *Client {
+// NewClient creates a new wayland client
+func NewClient(clips chan<- Clip) *Client {
 	c := new(Client)
 	c.seatGlobals = make(map[uint32]uint32)
 	c.clips = clips
@@ -44,10 +49,13 @@ func NewClient(clips chan Clip) *Client {
 	return c
 }
 
+// Close closes the underlying socket connection.
 func (h *Client) Close() error {
 	return h.display.Context().Close()
 }
 
+// HandleZwlrDataControlDeviceV1DataOffer handles whenever new clipboard is
+// offered.
 func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	e protocol.ZwlrDataControlDeviceV1DataOfferEvent,
 ) {
@@ -63,18 +71,21 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 
 	slog.Info(
 		"mime types collected",
-		"offer_id",
-		e.Id.Id(),
-		"count",
-		len(collector.mimes),
-		"mimes",
-		collector.mimes,
+		"offer_id", e.Id.Id(),
+		"count", len(collector.mimes),
+		"mimes", collector.mimes,
 	)
 
 	parser := newClipboardParser(e.Id, collector.mimes)
 	clip, err := parser.Parse()
 	if err != nil {
-		slog.Error("failed to parse clipboard content", "offer_id", e.Id.Id(), "error", err)
+		slog.Error(
+			"failed to parse clipboard content",
+			"offer_id",
+			e.Id.Id(),
+			"error",
+			err,
+		)
 		return
 	}
 
@@ -82,37 +93,46 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	h.clips <- clip
 }
 
+// HandleZwlrDataControlDeviceV1Selection handles selection changes. Currently
+// does nothing!
 func (h *Client) HandleZwlrDataControlDeviceV1Selection(
-	ev protocol.ZwlrDataControlDeviceV1SelectionEvent,
+	protocol.ZwlrDataControlDeviceV1SelectionEvent,
 ) {
 	slog.Debug("selection changed")
 }
 
+// HandleZwlrDataControlDeviceV1PrimarySelection handles primary selection
+// changes. Currently does nothing!
 func (h *Client) HandleZwlrDataControlDeviceV1PrimarySelection(
-	ev protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent,
+	protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent,
 ) {
 	slog.Debug("primary selection changed")
 }
 
+// HandleRegistryGlobal handles wl_seat and zwlr_data_control_manager_v1
+// added.
 func (h *Client) HandleRegistryGlobal(ev wl.RegistryGlobalEvent) {
 	if ev.Interface == "wl_seat" {
 		h.seatGlobals[ev.Name] = ev.Version
-		slog.Debug("wl_seat global registered", "name", ev.Name, "version", ev.Version)
+		slog.Debug(
+			"wl_seat global registered",
+			"name", ev.Name,
+			"version", ev.Version,
+		)
 	}
 
-	if ev.Interface == "zwlr_data_control_manager_v1" {
+	if ev.Interface == InterfaceName {
 		h.deviceName = ev.Name
 		h.deviceVersion = ev.Version
 		slog.Debug(
 			"zwlr_data_control_manager_v1 global registered",
-			"name",
-			ev.Name,
-			"version",
-			ev.Version,
+			"name", ev.Name,
+			"version", ev.Version,
 		)
 	}
 }
 
+// HandleRegistryGlobalRemove handles remove of globals.
 func (h *Client) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {
 	if _, exists := h.seatGlobals[ev.Name]; exists {
 		delete(h.seatGlobals, ev.Name)
@@ -120,7 +140,8 @@ func (h *Client) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {
 	}
 }
 
-func Watch(ctx context.Context, clips chan Clip) error {
+// Watch watches for clipboard changes and send new clips to given channel.
+func Watch(ctx context.Context, clips chan<- Clip) error {
 	slog.Info("starting clipboard watch")
 
 	client := NewClient(clips)
