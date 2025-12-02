@@ -75,12 +75,7 @@ func createDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := initializeFTS(db); err != nil {
-		slog.Error("failed to auto migrate database", "error", err)
-		return nil, err
-	}
 	slog.Info("database connected successfully")
-
 	return db, nil
 }
 
@@ -128,6 +123,20 @@ func Insert(ctx context.Context, clip *clipboard.Clip) error {
 		}
 		clip.BlobPath = blobPath
 		clip.Blob = nil
+	}
+
+	var last clipboard.Clip
+	if err := db.WithContext(ctx).Last(&last).Error; err != nil {
+		slog.Error("failed to insert clip", "error", err)
+		return err
+	}
+
+	if clip.Text == last.Text &&
+		clip.Metadata == last.Metadata &&
+		clip.URL == last.URL &&
+		clip.BlobPath == last.BlobPath {
+		slog.Debug("Ignoring duplicate clipboard item")
+		return nil
 	}
 
 	if err := db.WithContext(ctx).Create(clip).Error; err != nil {

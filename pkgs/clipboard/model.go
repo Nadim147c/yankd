@@ -6,12 +6,12 @@ import "time"
 
 // Clip is a single clipboard item
 type Clip struct {
-	ID       uint      `json:"id"             gorm:"uniqueIndex"`
+	ID       uint      `json:"id"`
 	Time     time.Time `json:"time"`
-	Text     string    `json:"text"           gorm:"uniqueIndex,class:FULLTEXT"`
+	Text     string    `json:"text"`
 	Blob     []byte    `json:"blob,omitempty"`
 	Mime     string    `json:"mime"`
-	Metadata string    `json:"metadata"       gorm:"uniqueIndex,class:FULLTEXT"`
-	URL      string    `json:"url"            gorm:"uniqueIndex,class:FULLTEXT"`
-	BlobPath string    `json:"blob_path"`
+	Metadata string    `json:"metadata"`
+	URL      string    `json:"url,omitempty"`
+	BlobPath string    `json:"blob_path,omitempty"`
 }

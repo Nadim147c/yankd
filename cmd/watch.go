@@ -23,6 +23,9 @@ var watchCommand = &cobra.Command{
 			clipboard.Watch(ctx, clips)
 			close(clips)
 		}()
+		if err := db.InitializeFTS(); err != nil {
+			return err
+		}
 
 		for clip := range clips {
 			slog.Debug("Saving content to clipboard history", "mime", clip.Mime)

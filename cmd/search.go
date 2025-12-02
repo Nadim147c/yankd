@@ -8,19 +8,29 @@ import (
 	"github.com/Nadim147c/yankd/internal/db"
 	"github.com/Nadim147c/yankd/pkgs/clipboard"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
 	Command.AddCommand(searchCommand)
+	fset := searchCommand.Flags()
+	fset.BoolP("sync", "s", false, "synchronize database before search")
+	fset.IntP("limit", "n", 40, "number of item to list")
 }
 
 var searchCommand = &cobra.Command{
 	Use:   "search",
 	Short: "Search clipboard",
 	Args:  cobra.ExactArgs(1),
+	PreRunE: func(cmd *cobra.Command, _ []string) error {
+		viper.SetDefault("limit", 40)
+		return viper.BindPFlags(cmd.Flags())
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := args[0]
-		clips, err := db.Search(cmd.Context(), query)
+		sync := viper.GetBool("sync")
+		limit := viper.GetInt("limit")
+		clips, err := db.Search(cmd.Context(), query, limit, sync)
 		if err != nil {
 			return err
 		}

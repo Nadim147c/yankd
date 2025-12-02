@@ -294,6 +294,7 @@ func (cp *clipboardParser) Parse() (Clip, error) {
 
 	slog.Info(
 		"clipboard parsed successfully",
+		"id", cp.offer.Id(),
 		"mime", clip.Mime,
 		"has_blob", len(clip.Blob) > 0,
 		"has_text", len(clip.Text) > 0,

@@ -5,13 +5,19 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Nadim147c/yankd/internal/db/binds"
 	"github.com/Nadim147c/yankd/pkgs/clipboard"
 	"gorm.io/gorm"
 )
 
-// initializeFTS sets up the FTS5 virtual table and triggers
-func initializeFTS(db *gorm.DB) error {
-	slog.Debug("initializing FTS5")
+// InitializeFTS sets up the FTS5 virtual table and triggers
+func InitializeFTS() error {
+	slog.Debug("Initializing FTS5")
+
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
 
 	// Create FTS5 virtual table for clips
 	if err := db.Exec(`
@@ -71,22 +77,43 @@ func rebuildIndex(db *gorm.DB) error {
 	return nil
 }
 
-// flexibleSearch searches text + metadata with FTS5 and fallback LIKE
-func flexibleSearch(
+// Search searches runs full-text serach in database and returns matched items.
+func Search(
 	ctx context.Context,
-	db *gorm.DB,
 	query string,
+	limit int,
+	sync bool,
 ) ([]clipboard.Clip, error) {
+	slog.Debug("searching clips", "query", query)
+
+	db, err := GetDB()
+	if err != nil {
+		slog.Error("failed to get database connection", "error", err)
+		return nil, err
+	}
+
+	if sync {
+		if err := rebuildIndex(db); err != nil {
+			slog.Error("failed to rebuild FTS index", "error", err)
+			return nil, err
+		}
+	}
+
 	slog.Debug("starting flexible search", "query", query)
 
 	var clips []clipboard.Clip
-	ftsQuery := fmt.Sprintf("%s* OR metadata:%s*", query, query)
+	ftsQuery := fmt.Sprintf(
+		"%s* OR metadata:%s* OR url:%s*",
+		query, query, query,
+	)
 
 	// Try FTS5 search first
-	err := db.WithContext(ctx).
-		Raw(`SELECT clips.* FROM clips
-             JOIN clip_index ON clip_index.rowid = clips.id
-             WHERE clip_index MATCH ?`, ftsQuery).
+	err = db.WithContext(ctx).Raw(`SELECT clips.* FROM clips
+    JOIN clip_index ON clip_index.rowid = clips.id
+    WHERE clip_index MATCH ?
+    ORDER BY rank
+    LIMIT ?
+    `, ftsQuery, limit).
 		Scan(&clips).Error
 
 	if err == nil && len(clips) > 0 {
@@ -114,7 +141,10 @@ func flexibleSearch(
 	// Fallback to normal LIKE search
 	likeQuery := "%" + query + "%"
 	if err := db.WithContext(ctx).
-		Where("text LIKE ? OR metadata LIKE ?", likeQuery, likeQuery).
+		Where(binds.Clip.Text.Like(likeQuery)).
+		Or(binds.Clip.Metadata.Like(likeQuery)).
+		Or(binds.Clip.URL.Like(likeQuery)).
+		Limit(limit).
 		Find(&clips).Error; err != nil {
 		slog.Error("fallback LIKE search failed", "query", query, "error", err)
 		return nil, err
@@ -126,34 +156,4 @@ func flexibleSearch(
 		"results", len(clips),
 	)
 	return clips, nil
-}
-
-// Search searches runs full-text serach in database and returns matched items.
-func Search(ctx context.Context, query string) ([]clipboard.Clip, error) {
-	slog.Debug("searching clips", "query", query)
-
-	db, err := GetDB()
-	if err != nil {
-		slog.Error("failed to get database connection", "error", err)
-		return nil, err
-	}
-
-	if err := initializeFTS(db); err != nil {
-		slog.Error("failed to initialize FTS", "error", err)
-		return nil, err
-	}
-
-	if err := rebuildIndex(db); err != nil {
-		slog.Error("failed to rebuild FTS index", "error", err)
-		return nil, err
-	}
-
-	results, err := flexibleSearch(ctx, db, query)
-	if err != nil {
-		slog.Error("search failed", "query", query, "error", err)
-		return nil, err
-	}
-
-	slog.Debug("search completed", "query", query, "results", len(results))
-	return results, nil
 }
