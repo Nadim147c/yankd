@@ -33,8 +33,8 @@ func init() {
 // Command is the root command for yankd
 var Command = &cobra.Command{
 	Use:   "yankd",
-	Short: "A dead simple clipboard manager",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	Short: "A wayland native clipboard manager",
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		viper.BindPFlags(cmd.Flags())
 
 		level := log.WarnLevel - (log.Level(viper.GetInt("verbose") * 4))
