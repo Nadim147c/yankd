@@ -70,6 +70,14 @@ func createDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
+	// allow multiple process write without error
+	if err := db.Raw(`PRAGMA busy_timeout = 5000;`).Error; err != nil {
+		return db, err
+	}
+	if err := db.Raw(`PRAGMA journal_mode = WAL;`).Error; err != nil {
+		return db, err
+	}
+
 	if err := db.AutoMigrate(&clipboard.Clip{}); err != nil {
 		slog.Error("failed to auto migrate database", "error", err)
 		return nil, err
