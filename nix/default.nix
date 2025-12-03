@@ -15,8 +15,8 @@ buildGoModule rec {
   src = fetchFromGitHub {
     owner = "Nadim147c";
     repo = "yankd";
-    rev = "2423d1abfb3dcc3001a3872b5d2ef4b4d6691b8c";
-    hash = "sha256-a9KOYrXcwEa/YAAVgYcvildoDzNgfb2JcJccHhbk0DI=";
+    rev = "df62d08303bcb8068e570b7c84b789ae39baf4cd";
+    hash = "sha256-clROQrBVCLWTPp3JD5teXsTLV0pHFZdiX3GnI6nS3/s=";
   };
 
   vendorHash = "sha256-SHzl0X3EqkE0aBHbHFgyeHG6T7j9T3vWaqmZG8x6J2Q=";
