@@ -92,6 +92,13 @@ func Search(
 		return nil, err
 	}
 
+	if query == "" {
+		return gorm.G[clipboard.Clip](db).
+			Order(binds.Clip.Time.Desc()).
+			Limit(limit).
+			Find(ctx)
+	}
+
 	if sync {
 		if err := rebuildIndex(db); err != nil {
 			slog.Error("failed to rebuild FTS index", "error", err)
