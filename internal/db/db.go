@@ -88,13 +88,13 @@ func createDB() (*gorm.DB, error) {
 }
 
 // Get returns clip for given id. Returns error if id not exists or db failure.
-func Get(ctx context.Context, id uint) (*clipboard.Clip, error) {
+func Get(ctx context.Context, id uint) (clipboard.Clip, error) {
 	slog.Debug("searching for clipboard", "id", id)
 
 	db, err := GetDB()
 	if err != nil {
 		slog.Error("failed to get database connection", "error", err)
-		return nil, err
+		return clipboard.Clip{}, err
 	}
 
 	clip, err := gorm.G[clipboard.Clip](db).
@@ -102,11 +102,11 @@ func Get(ctx context.Context, id uint) (*clipboard.Clip, error) {
 		First(ctx)
 	if err != nil {
 		slog.Error("failed to find clip", "id", id, "error", err)
-		return nil, err
+		return clipboard.Clip{}, err
 	}
 
 	slog.Debug("successfully the clip", "id", clip.ID)
-	return &clip, nil
+	return clipboard.Clip{}, nil
 }
 
 // Insert inserts given clip to database. Returns error on databse failure.
