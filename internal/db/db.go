@@ -102,11 +102,11 @@ func Get(ctx context.Context, id uint) (clipboard.Clip, error) {
 		First(ctx)
 	if err != nil {
 		slog.Error("failed to find clip", "id", id, "error", err)
-		return clipboard.Clip{}, err
+		return clipboard.Clip{}, fmt.Errorf("failed to find clip: %v", err)
 	}
 
 	slog.Debug("successfully the clip", "id", clip.ID)
-	return clipboard.Clip{}, nil
+	return clip, nil
 }
 
 // Insert inserts given clip to database. Returns error on databse failure.

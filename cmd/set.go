@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
@@ -32,11 +33,13 @@ var setCommand = &cobra.Command{
 
 		// TODO: set native protocal to set clipboard
 		if clip.BlobPath == "" {
+			slog.Debug("setting text content", "size", len(clip.Text))
 			wlCopy := exec.Command("wl-copy")
 			wlCopy.Stdin = strings.NewReader(clip.Text)
 			return wlCopy.Run()
 		}
 
+		slog.Debug("setting binary content", "size", len(clip.Text))
 		file, err := os.Open(clip.BlobPath)
 		if err != nil {
 			return err
