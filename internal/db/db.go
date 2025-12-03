@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Nadim147c/yankd/internal/db/binds"
-	"github.com/Nadim147c/yankd/pkgs/clipboard"
+	"github.com/Nadim147c/yankd/pkg/clipboard"
 	"github.com/glebarez/sqlite"
 	"github.com/spf13/viper"
 	"github.com/zeebo/xxh3"

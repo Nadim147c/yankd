@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Nadim147c/yankd/internal/db/binds"
-	"github.com/Nadim147c/yankd/pkgs/clipboard"
+	"github.com/Nadim147c/yankd/pkg/clipboard"
 	"gorm.io/gorm"
 )
 

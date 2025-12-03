@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/Nadim147c/yankd/internal/db"
-	"github.com/Nadim147c/yankd/pkgs/clipboard"
+	"github.com/Nadim147c/yankd/pkg/clipboard"
 	"github.com/spf13/cobra"
 )
 
