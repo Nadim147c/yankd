@@ -134,12 +134,9 @@ func Insert(ctx context.Context, clip *clipboard.Clip) error {
 	}
 
 	var last clipboard.Clip
-	if err := db.WithContext(ctx).Last(&last).Error; err != nil {
-		slog.Error("failed to insert clip", "error", err)
-		return err
-	}
-
-	if clip.Text == last.Text &&
+	err = db.WithContext(ctx).Last(&last).Error
+	if err == nil &&
+		clip.Text == last.Text &&
 		clip.Metadata == last.Metadata &&
 		clip.URL == last.URL &&
 		clip.BlobPath == last.BlobPath {
