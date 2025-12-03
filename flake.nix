@@ -3,7 +3,11 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
-  outputs = inputs @ {flake-parts, ...}:
+  outputs = inputs @ {
+    self,
+    flake-parts,
+    ...
+  }:
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = [
         "x86_64-linux"
@@ -17,10 +21,9 @@
         devShells.default = pkgs.callPackage ./nix/shell.nix {};
       };
 
-      # TODO: create a flake module
-      # flake = {
-      #   homeModules.yankd = import ./module.nix self;
-      #   homeModules.default = self.homeModules.yankd;
-      # };
+      flake = {
+        homeModules.yankd = import ./nix/home-module.nix self;
+        homeModules.default = self.homeModules.yankd;
+      };
     };
 }
