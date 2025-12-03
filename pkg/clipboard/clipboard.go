@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 	"github.com/neurlang/wayland/wl"
@@ -38,6 +39,7 @@ type Client struct {
 	seatGlobals   map[uint32]uint32
 	deviceName    uint32
 	deviceVersion uint32
+	closed        atomic.Bool
 }
 
 // NewClient creates a new wayland client
@@ -51,6 +53,7 @@ func NewClient(clips chan<- Clip) *Client {
 
 // Close closes the underlying socket connection.
 func (h *Client) Close() error {
+	h.closed.Store(true)
 	return h.display.Context().Close()
 }
 
@@ -65,7 +68,9 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	e.Id.AddOfferHandler(collector)
 
 	if err := wlclient.DisplayRoundtrip(h.display); err != nil {
-		slog.Error("registry roundtrip failed", "error", err)
+		if !h.closed.Load() {
+			slog.Error("registry roundtrip failed", "error", err)
+		}
 		return
 	}
 
@@ -81,10 +86,8 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	if err != nil {
 		slog.Error(
 			"failed to parse clipboard content",
-			"offer_id",
-			e.Id.Id(),
-			"error",
-			err,
+			"offer_id", e.Id.Id(),
+			"error", err,
 		)
 		return
 	}
@@ -233,7 +236,7 @@ func Watch(ctx context.Context, clips chan<- Clip) error {
 			return ctx.Err()
 		default:
 			err := wlclient.DisplayDispatch(display)
-			if err != nil {
+			if !client.closed.Load() && err != nil {
 				slog.Error("dispatch failed", "error", err)
 				return fmt.Errorf("dispatch failed: %w", err)
 			}
