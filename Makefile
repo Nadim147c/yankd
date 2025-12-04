@@ -16,10 +16,13 @@ INSTALL_FISH_COMPLETION_DIR = $(shell realpath -m "$(PREFIX)/share/fish/vendor_c
 
 -include Makefile.local
 
-.PHONY: build install completions
+.PHONY: build install test
 
 build:
 	$(GO) build -trimpath -ldflags '-s -w -X main.version=$(VERSION)' -o $(BUILD_BIN)
+	$(BUILD_BIN) _carapace bash > "$(BUILD_COMPLETION_DIR)/$(NAME).bash"
+	$(BUILD_BIN) _carapace zsh  > "$(BUILD_COMPLETION_DIR)/$(NAME).zsh"
+	$(BUILD_BIN) _carapace fish > "$(BUILD_COMPLETION_DIR)/$(NAME).fish"
 
 install:
 	install -Dm755 $(BUILD_BIN) "$(INSTALL_BIN)"
@@ -27,12 +30,6 @@ install:
 	install -Dm644 "$(BUILD_COMPLETION_DIR)/$(NAME).bash" "$(INSTALL_BASH_COMPLETION_DIR)/$(NAME)"
 	install -Dm644 "$(BUILD_COMPLETION_DIR)/$(NAME).zsh"  "$(INSTALL_ZSH_COMPLETION_DIR)/_$(NAME)"
 	install -Dm644 "$(BUILD_COMPLETION_DIR)/$(NAME).fish" "$(INSTALL_FISH_COMPLETION_DIR)/$(NAME).fish"
-
-completions: build
-	mkdir -p "$(BUILD_COMPLETION_DIR)"
-	$(BUILD_BIN) _carapace bash > "$(BUILD_COMPLETION_DIR)/$(NAME).bash"
-	$(BUILD_BIN) _carapace zsh  > "$(BUILD_COMPLETION_DIR)/$(NAME).zsh"
-	$(BUILD_BIN) _carapace fish > "$(BUILD_COMPLETION_DIR)/$(NAME).fish"
 
 test:
 	$(GO) test -v ./...
