@@ -1,5 +1,11 @@
 # Yankd
 
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/Nadim147c/yankd?style=for-the-badge&logo=go&labelColor=11140F&color=BBE9AA)](https://pkg.go.dev/github.com/Nadim147c/yankd)
+[![GitHub Repo stars](https://img.shields.io/github/stars/Nadim147c/yankd?style=for-the-badge&logo=github&labelColor=11140F&color=BBE9AA)](https://github.com/Nadim147c/yankd)
+[![GitHub License](https://img.shields.io/github/license/Nadim147c/yankd?style=for-the-badge&logo=gplv3&labelColor=11140F&color=BBE9AA)](./LICENSE)
+[![GitHub Tag](https://img.shields.io/github/v/tag/Nadim147c/yankd?include_prereleases&sort=semver&style=for-the-badge&logo=git&labelColor=11140F&color=BBE9AA)](https://github.com/Nadim147c/yankd/tags)
+[![Git Commit](https://img.shields.io/github/last-commit/Nadim147c/yankd?style=for-the-badge&logo=git&labelColor=11140F&color=BBE9AA)](https://github.com/Nadim147c/yankd/tags)
+
 A wayland native clipboard manager that implement `wlr-data-control-unstable-v1`.
 
 ### Install
