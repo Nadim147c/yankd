@@ -6,20 +6,25 @@
 [![GitHub Tag](https://img.shields.io/github/v/tag/Nadim147c/yankd?include_prereleases&sort=semver&style=for-the-badge&logo=git&labelColor=11140F&color=BBE9AA)](https://github.com/Nadim147c/yankd/tags)
 [![Git Commit](https://img.shields.io/github/last-commit/Nadim147c/yankd?style=for-the-badge&logo=git&labelColor=11140F&color=BBE9AA)](https://github.com/Nadim147c/yankd/tags)
 
+> [!CAUTION]
+> 🚧 **Highly Experimental & Unstable**. This project is in active development and
+> may break at any time. Expect bugs, missing features, unexpected behavior, and
+> frequent changes.
+
 A wayland native clipboard manager that implement `wlr-data-control-unstable-v1`.
 
-### Install
+## Install
 
-#### NixOS
+### NixOS
 
-##### Try out
+#### Try out
 
 ```bash
 nix run github:Nadim147c/yankd --help
 
 ```
 
-##### Use flake
+#### Use flake
 
 ```nix
 yankd = {
@@ -29,7 +34,7 @@ yankd = {
 };
 ```
 
-#### Manual
+### Manual
 
 > Requires `git`, `make`, `install` and `go` installed.
 
@@ -40,7 +45,7 @@ make build
 make install PREFIX=$HOME/.local/
 ```
 
-#### Go Install
+### Go Install
 
 ```
 go install https://github.com/Nadim147c/yankd@latest
