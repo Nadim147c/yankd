@@ -10,16 +10,16 @@
 }:
 buildGoModule rec {
   pname = "yankd";
-  version = "0.0.1-dev-unstable-2025-12-03";
+  version = "0.0.1-dev.3-unstable-2025-12-04";
 
   src = fetchFromGitHub {
     owner = "Nadim147c";
     repo = "yankd";
-    rev = "df62d08303bcb8068e570b7c84b789ae39baf4cd";
-    hash = "sha256-clROQrBVCLWTPp3JD5teXsTLV0pHFZdiX3GnI6nS3/s=";
+    rev = "1ff598e602b888b31975d115118f4de9cb7d3e5f";
+    hash = "sha256-1bd4YepxuIL8q55IpbbyX5G2093apD+YPA0/e/QBMMo=";
   };
 
-  vendorHash = "sha256-SHzl0X3EqkE0aBHbHFgyeHG6T7j9T3vWaqmZG8x6J2Q=";
+  vendorHash = "sha256-qmKm1Y4q43hWRdF1leT+2UujX9VlBJmpP51rxhpnBc4=";
 
   nativeBuildInputs = [installShellFiles makeBinaryWrapper];
   propagatedBuildInputs = [wl-clipboard];
