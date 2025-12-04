@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -14,9 +13,9 @@ import (
 
 	"github.com/Nadim147c/yankd/internal/db/binds"
 	"github.com/Nadim147c/yankd/pkg/clipboard"
+	"github.com/cespare/xxhash/v2"
 	"github.com/glebarez/sqlite"
 	"github.com/spf13/viper"
-	"github.com/zeebo/xxh3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -110,7 +109,7 @@ func Get(ctx context.Context, id uint) (clipboard.Clip, error) {
 }
 
 // Insert inserts given clip to database. Returns error on databse failure.
-func Insert(ctx context.Context, clip *clipboard.Clip) error {
+func Insert(ctx context.Context, clip clipboard.Clip) (clipboard.Clip, error) {
 	slog.Debug(
 		"inserting clip",
 		"text-size", len(clip.Text),
@@ -120,49 +119,48 @@ func Insert(ctx context.Context, clip *clipboard.Clip) error {
 	db, err := GetDB()
 	if err != nil {
 		slog.Error("failed to get database connection", "error", err)
-		return err
+		return clip, err
 	}
 
 	if len(clip.Blob) != 0 {
-		blobPath, err := CreateBlob(clip.Blob)
+		blobHash, blobPath, err := CreateBlob(clip.Blob)
 		if err != nil {
 			slog.Error("failed to create blob", "error", err)
-			return err
+			return clip, err
 		}
 		clip.BlobPath = blobPath
+		clip.BlobHash = blobHash
 		clip.Blob = nil
 	}
 
-	var last clipboard.Clip
-	err = db.WithContext(ctx).Last(&last).Error
-	if err == nil &&
-		clip.Text == last.Text &&
-		clip.Metadata == last.Metadata &&
-		clip.URL == last.URL &&
-		clip.BlobPath == last.BlobPath {
-		slog.Debug("Ignoring duplicate clipboard item")
-		return nil
+	clip.Hash = clipboard.HashClip(clip)
+
+	dbClip, err := gorm.G[clipboard.Clip](db).
+		Where(binds.Clip.Hash.Eq(clip.Hash)).
+		First(ctx)
+	if err == nil {
+		slog.Debug("record already exists", "hash", clip.Hash)
+		return dbClip, nil
 	}
 
-	if err := db.WithContext(ctx).Create(clip).Error; err != nil {
+	if err := gorm.G[clipboard.Clip](db).Create(ctx, &clip); err != nil {
 		slog.Error("failed to insert clip", "error", err)
-		return err
+		return clip, err
 	}
 
 	slog.Debug("clip inserted successfully")
-	return nil
+	return clip, nil
 }
 
 // CreateBlob create a file containing the binary files in database/blob
 // directory.
-func CreateBlob(b []byte) (string, error) {
-	sum := xxh3.Hash128(b).Bytes()
-	id := hex.EncodeToString(sum[:])
+func CreateBlob(b []byte) (clipboard.Hash, string, error) {
+	id := clipboard.Hash(xxhash.Sum64(b))
 
 	dbDir := viper.GetString("database")
 	if dbDir == "" {
 		slog.Error("database directory is empty")
-		return "", errors.New("database directory can not be empty")
+		return id, "", errors.New("database directory can not be empty")
 	}
 
 	blobDir := filepath.Join(dbDir, "blob")
@@ -172,21 +170,21 @@ func CreateBlob(b []byte) (string, error) {
 			"path", blobDir,
 			"error", err,
 		)
-		return "", fmt.Errorf("failed to create blob directory: %w", err)
+		return id, "", fmt.Errorf("failed to create blob directory: %w", err)
 	}
 
-	path := filepath.Join(blobDir, id)
+	path := filepath.Join(blobDir, fmt.Sprint(id))
 	if _, err := os.Stat(path); err == nil {
 		slog.Debug("blob file already exists", "path", path)
-		return path, nil
+		return id, path, nil
 	}
 
 	err := os.WriteFile(path, b, 0o644)
 	if err != nil {
 		slog.Error("failed to write blob file", "path", path, "error", err)
-		return path, err
+		return id, path, err
 	}
 
 	slog.Debug("blob file written", "path", path, "size", len(b))
-	return path, nil
+	return id, path, nil
 }

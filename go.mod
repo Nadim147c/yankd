@@ -6,12 +6,12 @@ require (
 	github.com/Nadim147c/fang v0.5.0-fork
 	github.com/adrg/xdg v0.5.3
 	github.com/carapace-sh/carapace v1.10.3
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/glebarez/sqlite v1.11.0
 	github.com/neurlang/wayland v0.3.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
-	github.com/zeebo/xxh3 v1.0.3-0.20250724185950-77e65e1f514f
 	gorm.io/cli/gorm v0.2.4
 	gorm.io/gorm v1.31.1
 )
@@ -38,7 +38,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect

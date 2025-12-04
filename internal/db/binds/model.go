@@ -3,25 +3,30 @@
 package binds
 
 import (
+	"github.com/Nadim147c/yankd/pkg/clipboard"
 	"gorm.io/cli/gorm/field"
 )
 
 var Clip = struct {
 	ID       field.Number[uint]
 	Time     field.Time
+	Hash     field.Field[clipboard.Hash]
 	Text     field.String
-	Blob     field.Bytes
 	Mime     field.String
 	Metadata field.String
 	URL      field.String
+	Blob     field.Bytes
 	BlobPath field.String
+	BlobHash field.Field[clipboard.Hash]
 }{
 	ID:       field.Number[uint]{}.WithColumn("id"),
 	Time:     field.Time{}.WithColumn("time"),
+	Hash:     field.Field[clipboard.Hash]{}.WithColumn("hash"),
 	Text:     field.String{}.WithColumn("text"),
-	Blob:     field.Bytes{}.WithColumn("blob"),
 	Mime:     field.String{}.WithColumn("mime"),
 	Metadata: field.String{}.WithColumn("metadata"),
 	URL:      field.String{}.WithColumn("url"),
+	Blob:     field.Bytes{}.WithColumn("blob"),
 	BlobPath: field.String{}.WithColumn("blob_path"),
+	BlobHash: field.Field[clipboard.Hash]{}.WithColumn("blob_hash"),
 }

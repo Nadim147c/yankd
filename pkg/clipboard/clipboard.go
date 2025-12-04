@@ -69,7 +69,11 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 
 	if err := wlclient.DisplayRoundtrip(h.display); err != nil {
 		if !h.closed.Load() {
-			slog.Error("registry roundtrip failed", "error", err)
+			slog.Error(
+				"registry roundtrip failed",
+				"error", err,
+				"closed-attempt", h.closed.Load(),
+			)
 		}
 		return
 	}
@@ -236,7 +240,7 @@ func Watch(ctx context.Context, clips chan<- Clip) error {
 			return ctx.Err()
 		default:
 			err := wlclient.DisplayDispatch(display)
-			if !client.closed.Load() && err != nil {
+			if err != nil && !client.closed.Load() {
 				slog.Error("dispatch failed", "error", err)
 				return fmt.Errorf("dispatch failed: %w", err)
 			}

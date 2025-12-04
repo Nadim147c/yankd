@@ -12,5 +12,6 @@ pkgs.mkShell {
     gopls
     revive
     sql-formatter
+    gorm
   ];
 }

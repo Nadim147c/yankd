@@ -16,6 +16,7 @@ var watchCommand = &cobra.Command{
 	Use:   "watch",
 	Short: "Watch for clipboard changes",
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		slog.Info("yankd watch starting", "version", Command.Version)
 		ctx := cmd.Context()
 		clips := make(chan clipboard.Clip)
 
@@ -30,10 +31,7 @@ var watchCommand = &cobra.Command{
 
 		for clip := range clips {
 			slog.Debug("Saving content to clipboard history", "mime", clip.Mime)
-			err := db.Insert(ctx, &clip)
-			if err != nil {
-				slog.Info("Failed to save clipboard", "error", err)
-			}
+			db.Insert(ctx, clip)
 		}
 		return nil
 	},
