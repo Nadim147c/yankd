@@ -2,7 +2,7 @@
 pkgs.mkShell {
   name = "yankd";
   # Get dependencies from the main package
-  inputsFrom = [(pkgs.callPackage ./default.nix {})];
+  inputsFrom = [(pkgs.callPackage ./package.nix {})];
   # Additional tooling
   buildInputs = with pkgs; [
     gnumake

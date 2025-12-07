@@ -17,7 +17,7 @@
       ];
 
       perSystem = {pkgs, ...}: {
-        packages.default = pkgs.callPackage ./nix/default.nix {};
+        packages.default = pkgs.callPackage ./nix/package.nix {};
         devShells.default = pkgs.callPackage ./nix/shell.nix {};
       };
 
