@@ -21,17 +21,17 @@ import (
 )
 
 var (
-	db   *gorm.DB
-	once sync.Once
+	instance *gorm.DB
+	once     sync.Once
 )
 
 // GetDB returns creates a sqlite db in disk and return *gorm.DB.
 func GetDB() (*gorm.DB, error) {
 	var err error
 	once.Do(func() {
-		db, err = createDB()
+		instance, err = createDB()
 	})
-	return db, err
+	return instance, err
 }
 
 func createDB() (*gorm.DB, error) {
@@ -41,6 +41,7 @@ func createDB() (*gorm.DB, error) {
 		return nil, errors.New("database directory can not be empty")
 	}
 
+	slog.Info("databse initialization", "database-dir", dbDir)
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
 		slog.Error(
 			"failed to create database directory",
