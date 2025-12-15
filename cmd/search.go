@@ -41,13 +41,13 @@ var searchCommand = &cobra.Command{
   # Use custom template
   yankd search password --format "{{.ID}}: {{.Text}}"
   `,
-	Args: cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, _ []string) error {
 		viper.SetDefault("limit", 40)
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		query := args[0]
+		query := strings.Join(args, " ")
+
 		sync := viper.GetBool("sync")
 		limit := viper.GetInt("limit")
 
