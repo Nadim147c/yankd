@@ -278,7 +278,7 @@ func (cp *clipboardParser) Parse() (Clip, error) {
 		slog.Debug("parsing text data", "mime", cp.selectedMimes.primary)
 
 		if data, ok := cp.retrievedData[cp.selectedMimes.primary]; ok {
-			clip.Text = string(bytes.TrimSpace(data))
+			clip.Text = string(data)
 			slog.Debug("text data set", "length", len(clip.Text))
 		}
 	}
