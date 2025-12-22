@@ -22,23 +22,31 @@ buildGoModule rec {
 
   vendorHash = "sha256-qmKm1Y4q43hWRdF1leT+2UujX9VlBJmpP51rxhpnBc4=";
 
-  nativeBuildInputs = [installShellFiles makeBinaryWrapper];
-  propagatedBuildInputs = [wl-clipboard];
+  nativeBuildInputs = [
+    installShellFiles
+    makeBinaryWrapper
+  ];
+  propagatedBuildInputs = [ wl-clipboard ];
 
-  nativeInstallCheckInputs = [versionCheckHook];
+  nativeInstallCheckInputs = [ versionCheckHook ];
   versionCheckProgramArg = "--version";
 
-  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) /* bash */ ''
     installShellCompletion --cmd yankd \
       --bash <($out/bin/yankd _carapace bash) \
       --fish <($out/bin/yankd _carapace fish) \
       --zsh <($out/bin/yankd _carapace zsh)
 
     wrapProgram $out/bin/yankd \
-      --prefix PATH : ${lib.makeBinPath [wl-clipboard]}
+      --prefix PATH : ${lib.makeBinPath [ wl-clipboard ]}
   '';
 
-  ldflags = ["-s" "-w" "-X" "main.version=${version}"];
+  ldflags = [
+    "-s"
+    "-w"
+    "-X"
+    "main.version=${version}"
+  ];
 
   meta = {
     description = "A wayland native clipboard manager";
