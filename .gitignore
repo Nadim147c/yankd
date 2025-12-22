@@ -2,3 +2,4 @@ build
 yankd
 Makefile.local
 result
+.direnv/*
