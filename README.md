@@ -30,7 +30,6 @@ nix run github:Nadim147c/yankd --help
 yankd = {
     url = "github:Nadim147c/yankd";
     inputs.nixpkgs.follows = "nixpkgs";
-    inputs.flake-parts.follows = "flake-parts"; # Optional
 };
 ```
 
