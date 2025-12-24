@@ -11,7 +11,7 @@
 }:
 buildGoModule rec {
   pname = "yankd";
-  version = "0.0.1-dev.3-unstable-2025-12-15";
+  version = "0.0.1-dev.4";
 
   src = fetchFromGitHub {
     owner = "Nadim147c";
