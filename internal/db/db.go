@@ -25,6 +25,18 @@ var (
 	once     sync.Once
 )
 
+// Close closes the database connection
+func Close() error {
+	if instance == nil {
+		return nil
+	}
+	db, err := instance.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
+}
+
 // GetDB returns creates a sqlite db in disk and return *gorm.DB.
 func GetDB() (*gorm.DB, error) {
 	var err error
@@ -63,8 +75,8 @@ func createDB() (*gorm.DB, error) {
 		},
 	)
 
-	dbFilename := sqlite.Open(filepath.Join(dbDir, "history.db"))
-	db, err := gorm.Open(dbFilename, &gorm.Config{Logger: newLogger})
+	sqliteDB := sqlite.Open(filepath.Join(dbDir, "history.db"))
+	db, err := gorm.Open(sqliteDB, &gorm.Config{Logger: newLogger})
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
 		return nil, err

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 	"github.com/neurlang/wayland/wl"
@@ -231,11 +230,7 @@ func Watch(ctx context.Context, clips chan<- Clip) error {
 	go func() {
 		<-ctx.Done()
 		slog.Info("context cancelled → attempting clean close")
-		go client.Close()
-		// HACK: Sometime it hangs. IDK why!! but panic lets us close...
-		time.Sleep(time.Second)
-		slog.Warn("clean close returned (rare), but watcher exiting anyway")
-		panic("forced exit: Wayland close hung or returned unexpectedly")
+		client.Close()
 	}()
 
 	for {
