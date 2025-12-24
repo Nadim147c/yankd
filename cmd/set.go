@@ -30,6 +30,7 @@ var setCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		// TODO: set native protocal to set clipboard
 		if clip.BlobPath == "" {

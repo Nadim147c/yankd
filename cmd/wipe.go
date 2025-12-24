@@ -25,6 +25,6 @@ var wipeCommand = &cobra.Command{
 			return err
 		}
 		slog.Info("Clipboard history deleted", "deleted-items", n)
-		return nil
+		return db.Close()
 	},
 }

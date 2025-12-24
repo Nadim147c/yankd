@@ -55,6 +55,7 @@ var searchCommand = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		format := viper.GetString("format")
 		switch strings.ToLower(format) {
