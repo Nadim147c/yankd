@@ -75,12 +75,12 @@ func HashClip(clip Clip) Hash {
 type Clip struct {
 	ID       uint      `json:"id"`
 	Time     time.Time `json:"time"`
-	Hash     Hash      `json:"hash"                gorm:"index:,unique,length:16"`
+	Hash     Hash      `json:"hash" gorm:"index:,unique,length:16"`
 	Text     string    `json:"text"`
 	Mime     string    `json:"mime"`
 	Metadata string    `json:"metadata"`
 	URL      string    `json:"url,omitempty"`
-	Blob     []byte    `json:"blob,omitempty"`
+	Blob     []byte    `json:"blob,omitempty" gorm:"-:all"`
 	BlobPath string    `json:"blob_path,omitempty"`
 	BlobHash Hash      `json:"blob_hash,omitempty" gorm:"index:,length:16"`
 }

@@ -3,3 +3,4 @@ yankd
 Makefile.local
 result
 .direnv/*
+vendor/
