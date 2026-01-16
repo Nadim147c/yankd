@@ -143,7 +143,6 @@ func Insert(ctx context.Context, clip clipboard.Clip) (clipboard.Clip, error) {
 		}
 		clip.BlobPath = blobPath
 		clip.BlobHash = blobHash
-		clip.Blob = nil
 	}
 
 	clip.Hash = clipboard.HashClip(clip)
