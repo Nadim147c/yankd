@@ -13,6 +13,17 @@
 
 A wayland native clipboard manager that implement `wlr-data-control-unstable-v1`.
 
+## TODO
+
+- [x] Watch for clipboard change.
+- [x] Full text search clipboard history.
+  - [ ] Improve search (current it prioritizes the image items).
+- [x] Delete clip item.
+- [x] Wipe database.
+- [ ] Native clipboard offering.
+  - [ ] Remove wl-clipboard dependencies.
+- [ ] Stable version!
+
 ## Install
 
 ### NixOS
@@ -49,3 +60,7 @@ make install PREFIX=$HOME/.local/
 ```
 go install https://github.com/Nadim147c/yankd@latest
 ```
+
+## License
+
+[GPL-v3](./LICENSE)
