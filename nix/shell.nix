@@ -7,15 +7,17 @@ pkgs.mkShell {
   inputsFrom = [ (pkgs.callPackage ./package.nix { }) ];
   # Additional tooling
   buildInputs = with pkgs; [
-    gnumake
     go
     gofumpt
     golines
     gopls
-    revive
+    golangci-lint-langserver
     sql-formatter
-    gorm
     sqlite
+    sqlc
+    sqlcheck
+    goose
     nushell
+    just
   ];
 }

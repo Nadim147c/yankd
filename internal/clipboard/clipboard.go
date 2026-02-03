@@ -8,12 +8,13 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/Nadim147c/yankd/internal/models"
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 	"github.com/neurlang/wayland/wl"
 	"github.com/neurlang/wayland/wlclient"
 )
 
-// InterfaceName is the wlr-data-control-unstable-v1 interface name
+// InterfaceName is the wlr-data-control-unstable-v1 interface name.
 const InterfaceName = "zwlr_data_control_manager_v1"
 
 type mimeHandler struct {
@@ -30,23 +31,22 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 	slog.Debug("mime type added", "mime", e.MimeType, "total", len(h.mimes))
 }
 
-// Client is wayland that handle wayland clipboard protocol
+// Client is wayland that handle wayland clipboard protocol.
 type Client struct {
-	display       *wl.Display
-	registry      *wl.Registry
-	manager       *protocol.ZwlrDataControlManagerV1
-	clips         chan<- Clip
+	display  *wl.Display
+	registry *wl.Registry
+	// manager       *protocol.ZwlrDataControlManagerV1
+	clips         chan<- models.Event
 	seatGlobals   map[uint32]uint32
 	deviceName    uint32
 	deviceVersion uint32
 	closed        atomic.Bool
 }
 
-// NewClient creates a new wayland client
-func NewClient(clips chan<- Clip) *Client {
+// NewClient creates a new wayland client.
+func NewClient() *Client {
 	c := new(Client)
 	c.seatGlobals = make(map[uint32]uint32)
-	c.clips = clips
 	slog.Debug("clipboard client created")
 	return c
 }
@@ -86,7 +86,7 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 	)
 
 	parser := newClipboardParser(e.Id, collector.mimes)
-	clip, err := parser.Parse()
+	clip, err := parser.parse()
 	if err != nil {
 		slog.Error(
 			"failed to parse clipboard content",
@@ -148,10 +148,11 @@ func (h *Client) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {
 }
 
 // Watch watches for clipboard changes and send new clips to given channel.
-func Watch(ctx context.Context, clips chan<- Clip) error {
+func Watch(ctx context.Context, clips chan<- models.Event) error {
 	slog.Info("starting clipboard watch")
 
-	client := NewClient(clips)
+	client := NewClient()
+	client.clips = clips
 
 	display, err := wlclient.DisplayConnect(nil)
 	if err != nil {
@@ -230,7 +231,7 @@ func Watch(ctx context.Context, clips chan<- Clip) error {
 	go func() {
 		<-ctx.Done()
 		slog.Info("context cancelled → attempting clean close")
-		client.Close()
+		client.Close() //nolint
 	}()
 
 	for {
