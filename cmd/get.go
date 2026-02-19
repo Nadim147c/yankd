@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
@@ -15,7 +16,8 @@ import (
 
 func init() {
 	Command.AddCommand(getCommand)
-	getCommand.Flags().BoolP("primary", "p", false, "Return data from primary mime type")
+	getCommand.Flags().BoolP("primary", "p", false, "Return data for primary mime type")
+	getCommand.Flags().BoolP("base64", "b", false, "Return binary data for primary mime type as base64")
 }
 
 var getCommand = &cobra.Command{
@@ -45,14 +47,25 @@ var getCommand = &cobra.Command{
 			idx := slices.IndexFunc(event.Entries, func(e models.Entry) bool {
 				return e.MimeType == event.PrimaryMimeType
 			})
+
 			if idx < 0 {
 				return errors.New("primary mime_type not found")
 			}
+
 			entry := event.Entries[idx]
 			if entry.IsText {
 				_, err := os.Stdout.WriteString(entry.Text.String)
 				return err
 			}
+
+			if viper.GetBool("base64") {
+				w := base64.NewEncoder(base64.StdEncoding, os.Stdout)
+				if _, err := w.Write(entry.Blob); err != nil {
+					return err
+				}
+				return w.Close()
+			}
+
 			_, err := os.Stdout.Write(entry.Blob)
 			return err
 		}
