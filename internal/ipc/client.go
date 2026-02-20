@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
+	"sync"
 )
 
 // Client connects to a Unix socket and sends/receives messages.
 type Client struct {
 	conn   *net.UnixConn
 	reader *bufio.Reader
+	mu     sync.Mutex
 }
 
 func NewClient() *Client {
@@ -38,8 +41,11 @@ func (c *Client) Connect() error {
 
 // Send writes a message in the format "<cmd>:<payload>" to the socket.
 // It appends a newline automatically.
-func (c *Client) Send(cmd, payload string) ([]byte, error) {
-	_, err := fmt.Fprintf(c.conn, "%s:%s\n", cmd, payload)
+func (c *Client) Send(cmd string, args ...string) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := fmt.Fprintf(c.conn, "%s:%s\n", cmd, strings.Join(args, ":"))
 	if err != nil {
 		return nil, err
 	}

@@ -42,6 +42,14 @@ var (
 	_ driver.Valuer    = (*NullString)(nil)
 )
 
+// Bytes return []byte of underlying string.
+func (n NullString) Bytes() []byte {
+	if !n.Valid {
+		return nil
+	}
+	return []byte(n.String)
+}
+
 // Scan implements the sql.Scanner interface.
 func (n *NullString) Scan(v any) error {
 	if v == nil {

@@ -74,7 +74,7 @@ type SimplifedEvent struct {
 	Preview  string    `json:"preview"`
 }
 
-func formatSimpleJSON(events []models.Event) error {
+func formatSimpleJSON(events []models.ClipboardEvent) error {
 	simpleEvents := make([]SimplifedEvent, 0, len(events))
 	for event := range slices.Values(events) {
 		se := SimplifedEvent{
@@ -88,13 +88,13 @@ func formatSimpleJSON(events []models.Event) error {
 	return json.NewEncoder(os.Stdout).Encode(simpleEvents)
 }
 
-func formatJSON(events []models.Event) error {
+func formatJSON(events []models.ClipboardEvent) error {
 	return json.NewEncoder(os.Stdout).Encode(events)
 }
 
-func getPreview(entries []models.Entry) string {
+func getPreview(entries []models.ClipboardEntry) string {
 	m := make(map[models.Hash]struct{}, len(entries))
-	uniqueEntries := slices.DeleteFunc(entries, func(e models.Entry) bool {
+	uniqueEntries := slices.DeleteFunc(entries, func(e models.ClipboardEntry) bool {
 		if !e.IsText || !e.Text.Valid {
 			return true
 		}
@@ -118,7 +118,7 @@ func getPreview(entries []models.Entry) string {
 	return strings.Join(words, " ")
 }
 
-func formatPlain(events []models.Event) error { //nolint:unparam
+func formatPlain(events []models.ClipboardEvent) error { //nolint:unparam
 	for event := range slices.Values(events) {
 		preview := fmt.Sprintf("%d\t%s\t%s", event.ID, event.PrimaryMimeType, getPreview(event.Entries))
 		_, _ = fmt.Fprintln(os.Stdout, preview)

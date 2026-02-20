@@ -9,10 +9,10 @@ import (
 	"github.com/Nadim147c/yankd/internal/models"
 )
 
-func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.Event {
-	clipEntries := make([]models.Entry, len(entries))
+func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.ClipboardEvent {
+	clipEntries := make([]models.ClipboardEntry, len(entries))
 	for i, e := range entries {
-		clipEntries[i] = models.Entry{
+		clipEntries[i] = models.ClipboardEntry{
 			MimeType: e.MimeType,
 			Hash:     e.Hash,
 			IsText:   e.IsText,
@@ -20,7 +20,7 @@ func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.Event {
 			Blob:     e.Blob,
 		}
 	}
-	return models.Event{
+	return models.ClipboardEvent{
 		ID:              e.ID,
 		Time:            e.Time,
 		PrimaryMimeType: e.PrimaryMimeType,
@@ -29,20 +29,20 @@ func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.Event {
 }
 
 // Get return a single clipboard item from history.
-func (db *DB) Get(ctx context.Context, id int64) (models.Event, error) {
+func (db *DB) Get(ctx context.Context, id int64) (models.ClipboardEvent, error) {
 	event, err := db.queries.GetEvent(ctx, id)
 	if err != nil {
-		return models.Event{}, fmt.Errorf("failed to get event: %w", err)
+		return models.ClipboardEvent{}, fmt.Errorf("failed to get event: %w", err)
 	}
 	entries, err := db.queries.GetEntries(ctx, []int64{id})
 	if err != nil {
-		return models.Event{}, fmt.Errorf("failed to get entries: %w", err)
+		return models.ClipboardEvent{}, fmt.Errorf("failed to get entries: %w", err)
 	}
 	return ModelConvert(event, entries), nil
 }
 
 // Get return a single clipboard item from history.
-func (db *DB) GetLast(ctx context.Context, limit int64) ([]models.Event, error) {
+func (db *DB) GetLast(ctx context.Context, limit int64) ([]models.ClipboardEvent, error) {
 	events, err := db.queries.GetLastEvents(ctx, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event: %w", err)
@@ -64,7 +64,7 @@ func (db *DB) GetLast(ctx context.Context, limit int64) ([]models.Event, error) 
 		entryMap[en.EventID] = append(entryMap[en.EventID], en)
 	}
 
-	result := make([]models.Event, len(events))
+	result := make([]models.ClipboardEvent, len(events))
 	for i, ev := range events {
 		result[i] = ModelConvert(ev, entryMap[ev.ID])
 	}
@@ -73,7 +73,7 @@ func (db *DB) GetLast(ctx context.Context, limit int64) ([]models.Event, error) 
 }
 
 // GetMany return a single clipboard item from history.
-func (db *DB) GetMany(ctx context.Context, ids []int64) ([]models.Event, error) {
+func (db *DB) GetMany(ctx context.Context, ids []int64) ([]models.ClipboardEvent, error) {
 	events, err := db.queries.GetEvents(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event: %w", err)
@@ -90,7 +90,7 @@ func (db *DB) GetMany(ctx context.Context, ids []int64) ([]models.Event, error) 
 		entryMap[en.EventID] = append(entryMap[en.EventID], en)
 	}
 
-	result := make([]models.Event, len(events))
+	result := make([]models.ClipboardEvent, len(events))
 	for i, ev := range events {
 		result[i] = ModelConvert(ev, entryMap[ev.ID])
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 // Insert inserts a clip to database.
-func (db *DB) Insert(ctx context.Context, e models.Event) error {
+func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
 	if len(e.Entries) == 0 {
 		return errors.New("clipboard has no content")
 	}

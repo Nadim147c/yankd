@@ -2,9 +2,11 @@ package clipboard
 
 import (
 	"log/slog"
+	"sync"
 	"sync/atomic"
 
 	"github.com/Nadim147c/yankd/internal/models"
+	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 	"github.com/neurlang/wayland/wl"
 )
 
@@ -13,10 +15,20 @@ const InterfaceName = "zwlr_data_control_manager_v1"
 
 // Client is wayland that handle wayland clipboard protocol.
 type Client struct {
+	mu       sync.Mutex
 	display  *wl.Display
 	registry *wl.Registry
-	// manager       *protocol.ZwlrDataControlManagerV1
-	clips         chan<- models.Event
+
+	connected atomic.Bool
+
+	// set types
+	mimes map[string][]byte
+	event *models.ClipboardEvent
+
+	manager *protocol.ZwlrDataControlManagerV1
+	device  *protocol.ZwlrDataControlDeviceV1
+
+	eventChan     chan<- models.ClipboardEvent
 	seatGlobals   map[uint32]uint32
 	deviceName    uint32
 	deviceVersion uint32
@@ -32,7 +44,7 @@ func NewClient() *Client {
 }
 
 // Close closes the underlying socket connection.
-func (h *Client) Close() error {
-	h.closed.Store(true)
-	return h.display.Context().Close()
+func (c *Client) Close() error {
+	c.closed.Store(true)
+	return c.display.Context().Close()
 }

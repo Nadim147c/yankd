@@ -9,13 +9,9 @@ import (
 func TestIpcEcho(t *testing.T) {
 	file := filepath.Join(t.TempDir(), SocketName)
 	internalSocketPathOnlyForTesting = file
-	server, err := CreateServer()
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-	defer server.Close()
+	server := NewServer(nil, nil)
 
-	go server.Listen(t.Context(), nil)
+	go server.Listen(t.Context())
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -40,13 +36,9 @@ func TestIpcEcho(t *testing.T) {
 func TestIpcPing(t *testing.T) {
 	file := filepath.Join(t.TempDir(), SocketName)
 	internalSocketPathOnlyForTesting = file
-	server, err := CreateServer()
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-	defer server.Close()
+	server := NewServer(nil, nil)
 
-	go server.Listen(t.Context(), nil)
+	go server.Listen(t.Context())
 
 	time.Sleep(50 * time.Millisecond)
 

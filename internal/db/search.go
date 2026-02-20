@@ -9,7 +9,7 @@ import (
 
 // Search runs full-text search in database and returns matched items.
 // If query is empty, it returns the latest items instead.
-func (db *DB) Search(ctx context.Context, query string, limit int) ([]models.Event, error) {
+func (db *DB) Search(ctx context.Context, query string, limit int) ([]models.ClipboardEvent, error) {
 	if limit <= 0 {
 		return nil, nil
 	}

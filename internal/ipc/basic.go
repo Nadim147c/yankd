@@ -5,13 +5,9 @@ import (
 	"net"
 	"strconv"
 	"time"
-
-	"github.com/Nadim147c/yankd/internal/db"
 )
 
-const BadRequest = "<BAD_REQUEST>"
-
-func (s *Server) HandleEcho(conn *net.UnixConn, payload string, db *db.DB) {
+func (s *Server) HandleEcho(conn *net.UnixConn, payload string) {
 	_, _ = fmt.Fprintln(conn, payload)
 }
 
@@ -20,7 +16,7 @@ func (c *Client) SendEcho(msg string) (string, error) {
 	return string(resp), err
 }
 
-func (s *Server) HandlePing(conn *net.UnixConn, _ string, db *db.DB) {
+func (s *Server) HandlePing(conn *net.UnixConn, _ string) {
 	_, _ = fmt.Fprintln(conn, time.Now().UnixNano())
 }
 
@@ -33,7 +29,7 @@ func (c *Client) SendPing() (
 ) {
 	startTime := time.Now()
 
-	resp, err := c.Send("ping", "")
+	resp, err := c.Send("ping")
 	if err != nil {
 		return 0, 0, err
 	}

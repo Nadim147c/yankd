@@ -9,13 +9,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/Nadim147c/yankd/internal/clipboard"
 	"github.com/Nadim147c/yankd/internal/db"
 )
 
 const (
 	MaxBufferSize = 100 * 1024 * 1024
 	SocketName    = "yankd.sock" // default socket file name
+	BadRequest    = "<BAD_REQUEST>"
+	Success       = "<SUCCESS>"
 )
 
 var internalSocketPathOnlyForTesting string
@@ -35,37 +39,45 @@ func getSocketPath() string {
 
 // Server listens on a Unix socket, accepts connections, and processes messages.
 type Server struct {
-	listener   *net.UnixListener
-	socketPath string
+	listener *net.UnixListener
+	db       *db.DB
+	cb       *clipboard.Client
+	ctx      context.Context
 }
 
 var ErrAlreadyRunning = errors.New("another instance is running")
 
-// CreateServer creates and starts listening on the automatically determined socket path.
+// NewServer creates and starts listening on the automatically determined socket path.
 // It removes any existing socket file to avoid address already in use errors.
-func CreateServer() (*Server, error) {
-	socketPath := getSocketPath()
-
-	if _, err := os.Stat(socketPath); err == nil {
-		return nil, ErrAlreadyRunning
-	}
-
-	addr, err := net.ResolveUnixAddr("unix", socketPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve unix addr: %w", err)
-	}
-
-	listener, err := net.ListenUnix("unix", addr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen on unix socket: %w", err)
-	}
-
-	return &Server{listener: listener, socketPath: socketPath}, nil
+func NewServer(db *db.DB, cb *clipboard.Client) *Server {
+	s := new(Server)
+	s.db = db
+	s.cb = cb
+	return s
 }
 
 // Listen accepts incoming connections and handles them until the context is
 // cancelled. The db parameter is currently ignored (reserved for future use).
-func (s *Server) Listen(ctx context.Context, db *db.DB) error {
+func (s *Server) Listen(ctx context.Context) error {
+	socketPath := getSocketPath()
+	s.ctx = ctx
+	defer func() { s.ctx = nil }()
+
+	if _, err := os.Stat(socketPath); err == nil {
+		return ErrAlreadyRunning
+	}
+	defer os.Remove(socketPath)
+
+	addr, err := net.ResolveUnixAddr("unix", socketPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve unix addr: %w", err)
+	}
+
+	listener, err := net.ListenUnix("unix", addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on unix socket: %w", err)
+	}
+	s.listener = listener
 	defer s.listener.Close()
 
 	// Channel to signal when accept loop should stop
@@ -76,6 +88,8 @@ func (s *Server) Listen(ctx context.Context, db *db.DB) error {
 		close(done)
 	}()
 
+	var wg sync.WaitGroup
+
 	for {
 		conn, err := s.listener.AcceptUnix()
 		if err != nil {
@@ -83,6 +97,7 @@ func (s *Server) Listen(ctx context.Context, db *db.DB) error {
 			// (normal shutdown)
 			select {
 			case <-ctx.Done():
+				wg.Wait()
 				return nil
 			default:
 				return fmt.Errorf("accept error: %w", err)
@@ -90,12 +105,12 @@ func (s *Server) Listen(ctx context.Context, db *db.DB) error {
 		}
 
 		// Handle each connection concurrently
-		go s.handleConnection(conn, db)
+		wg.Go(func() { s.handleConnection(conn) })
 	}
 }
 
 // handleConnection reads messages from a single connection and responds.
-func (s *Server) handleConnection(conn *net.UnixConn, db *db.DB) {
+func (s *Server) handleConnection(conn *net.UnixConn) {
 	defer conn.Close()
 
 	scanner := bufio.NewScanner(conn)
@@ -111,21 +126,17 @@ func (s *Server) handleConnection(conn *net.UnixConn, db *db.DB) {
 
 		switch cmd {
 		case "echo":
-			s.HandleEcho(conn, payload, db)
+			s.HandleEcho(conn, payload)
 		case "ping":
-			s.HandlePing(conn, payload, db)
+			s.HandlePing(conn, payload)
+		// case "copy":
+		// 	s.HandleCopy(conn, payload)
+		case "set":
+			s.HandleSet(conn, payload)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "connection read error: %v\n", err)
 	}
-}
-
-// Close closes the server's listener. It does NOT close any database (per comment).
-func (s *Server) Close() error {
-	if err := s.listener.Close(); err != nil {
-		return err
-	}
-	return os.Remove(s.socketPath)
 }

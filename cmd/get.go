@@ -44,7 +44,7 @@ var getCommand = &cobra.Command{
 		}
 
 		if viper.GetBool("primary") {
-			idx := slices.IndexFunc(event.Entries, func(e models.Entry) bool {
+			idx := slices.IndexFunc(event.Entries, func(e models.ClipboardEntry) bool {
 				return e.MimeType == event.PrimaryMimeType
 			})
 

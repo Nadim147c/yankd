@@ -14,8 +14,9 @@ import (
 )
 
 type mimeHandler struct {
-	mu    sync.Mutex
-	mimes []string
+	mu        sync.Mutex
+	fromYankd bool
+	mimes     []string
 }
 
 func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
@@ -23,23 +24,22 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 ) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.fromYankd = h.fromYankd || e.MimeType == YankdMimeType
 	h.mimes = append(h.mimes, e.MimeType)
 	slog.Debug("mime type added", "mime", e.MimeType, "total", len(h.mimes))
 }
 
 // HandleZwlrDataControlDeviceV1DataOffer handles whenever new clipboard is
 // offered.
-func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
-	e protocol.ZwlrDataControlDeviceV1DataOfferEvent,
-) {
+func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataControlDeviceV1DataOfferEvent) {
 	slog.Debug("data offer received", "offer_id", e.Id.Id())
 
 	collector := &mimeHandler{}
 	e.Id.AddOfferHandler(collector)
 
-	if err := wlclient.DisplayRoundtrip(h.display); err != nil {
-		if !h.closed.Load() {
-			slog.Error("registry roundtrip failed", "error", err, "closed-attempt", h.closed.Load())
+	if err := wlclient.DisplayRoundtrip(c.display); err != nil {
+		if !c.closed.Load() {
+			slog.Error("registry roundtrip failed", "error", err, "closed-attempt", c.closed.Load())
 		}
 		return
 	}
@@ -48,40 +48,48 @@ func (h *Client) HandleZwlrDataControlDeviceV1DataOffer(
 		"offer_id", e.Id.Id(),
 		"count", len(collector.mimes),
 		"mimes", collector.mimes,
+		"from_yankd", collector.fromYankd,
 	)
 
+	if collector.fromYankd {
+		return
+	}
+
 	parser := newClipboardParser(e.Id, collector.mimes)
-	clip, err := parser.parse()
+	event, err := parser.parse()
 	if err != nil {
 		slog.Error("failed to parse clipboard content", "offer_id", e.Id.Id(), "error", err)
 		return
 	}
 
 	slog.Debug("clipboard content parsed successfully", "offer_id", e.Id.Id())
-	h.clips <- clip
+	c.eventChan <- event
 }
 
 // HandleZwlrDataControlDeviceV1Selection handles selection changes. Currently does nothing!
-func (h *Client) HandleZwlrDataControlDeviceV1Selection(protocol.ZwlrDataControlDeviceV1SelectionEvent) {
+func (c *Client) HandleZwlrDataControlDeviceV1Selection(protocol.ZwlrDataControlDeviceV1SelectionEvent) {
 	slog.Debug("selection changed")
 }
 
 // HandleZwlrDataControlDeviceV1PrimarySelection handles primary selection
 // changes. Currently does nothing!
-func (h *Client) HandleZwlrDataControlDeviceV1PrimarySelection(protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
+func (c *Client) HandleZwlrDataControlDeviceV1PrimarySelection(protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
 	slog.Debug("primary selection changed")
 }
 
 // HandleRegistryGlobal handles wl_seat and zwlr_data_control_manager_v1 added.
-func (h *Client) HandleRegistryGlobal(ev wl.RegistryGlobalEvent) {
+func (c *Client) HandleRegistryGlobal(ev wl.RegistryGlobalEvent) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if ev.Interface == "wl_seat" {
-		h.seatGlobals[ev.Name] = ev.Version
+		c.seatGlobals[ev.Name] = ev.Version
 		slog.Debug("wl_seat global registered", "name", ev.Name, "version", ev.Version)
 	}
 
 	if ev.Interface == InterfaceName {
-		h.deviceName = ev.Name
-		h.deviceVersion = ev.Version
+		c.deviceName = ev.Name
+		c.deviceVersion = ev.Version
 		slog.Debug(
 			"zwlr_data_control_manager_v1 global registered",
 			"name", ev.Name,
@@ -91,17 +99,19 @@ func (h *Client) HandleRegistryGlobal(ev wl.RegistryGlobalEvent) {
 }
 
 // HandleRegistryGlobalRemove handles remove of globals.
-func (h *Client) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {
-	if _, exists := h.seatGlobals[ev.Name]; exists {
-		delete(h.seatGlobals, ev.Name)
+func (c *Client) HandleRegistryGlobalRemove(ev wl.RegistryGlobalRemoveEvent) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, exists := c.seatGlobals[ev.Name]; exists {
+		delete(c.seatGlobals, ev.Name)
 		slog.Debug("wl_seat global removed", "name", ev.Name)
 	}
 }
 
 // Watch watches for clipboard changes and send new clips to given channel.
-func (c *Client) Watch(ctx context.Context, clips chan<- models.Event) error {
+func (c *Client) Listen(ctx context.Context, events chan<- models.ClipboardEvent) error {
 	slog.Info("starting clipboard watch")
-	c.clips = clips
+	c.eventChan = events
 
 	display, err := wlclient.DisplayConnect(nil)
 	if err != nil {
@@ -127,6 +137,8 @@ func (c *Client) Watch(ctx context.Context, clips chan<- models.Event) error {
 		slog.Error("registry roundtrip failed", "error", err)
 		return fmt.Errorf("registry roundtrip failed: %w", err)
 	}
+
+	c.connected.Store(true)
 
 	var seat *wl.Seat
 	for id, ver := range c.seatGlobals {
@@ -167,6 +179,9 @@ func (c *Client) Watch(ctx context.Context, clips chan<- models.Event) error {
 		return err
 	}
 	slog.Debug("got data device")
+
+	c.manager = manager
+	c.device = device
 
 	device.AddDataOfferHandler(c)
 	device.AddSelectionHandler(c)
