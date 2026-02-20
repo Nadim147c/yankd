@@ -1,4 +1,4 @@
-package wlr
+package protocol
 
 import "github.com/neurlang/wayland/wl"
 
