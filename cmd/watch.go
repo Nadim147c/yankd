@@ -24,7 +24,10 @@ var watchCommand = &cobra.Command{
 		clips := make(chan models.Event)
 		context.AfterFunc(ctx, func() { close(clips) })
 
-		go clipboard.Watch(ctx, clips) //nolint
+		client := clipboard.NewClient()
+		defer client.Close()
+
+		go client.Watch(ctx, clips)
 
 		db, err := db.CreateDB()
 		if err != nil {
