@@ -6,7 +6,7 @@ CREATE TABLE events (
   time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE datas (
+CREATE TABLE contents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   hash UNSIGNED BIGINT NOT NULL,
   is_text BOOLEAN NOT NULL DEFAULT 1,
@@ -17,16 +17,16 @@ CREATE TABLE datas (
 CREATE TABLE entries (
   event_id INTEGER NOT NULL,
   mime_type TEXT NOT NULL DEFAULT 'text/plain',
-  data_id INTEGER NOT NULL,
+  content_id INTEGER NOT NULL,
   FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
-  FOREIGN KEY (data_id) REFERENCES datas (id) ON DELETE RESTRICT
+  FOREIGN KEY (content_id) REFERENCES contents (id) ON DELETE RESTRICT
 );
 
 CREATE UNIQUE INDEX idx_events_id ON events (id);
 CREATE INDEX idx_entries_event_id ON entries (event_id);
-CREATE INDEX idx_entries_data_id ON entries (data_id);
-CREATE UNIQUE INDEX idx_datas_id ON datas (id);
-CREATE INDEX idx_datas_hash ON datas (hash);
+CREATE INDEX idx_entries_content_id ON entries (content_id);
+CREATE UNIQUE INDEX idx_contents_id ON contents (id);
+CREATE INDEX idx_contents_hash ON contents (hash);
 -- +goose StatementEnd
 
 
@@ -34,7 +34,7 @@ CREATE INDEX idx_datas_hash ON datas (hash);
 -- +goose StatementBegin
 
 DROP TABLE IF EXISTS entries;
-DROP TABLE IF EXISTS datas;
+DROP TABLE IF EXISTS contents;
 DROP TABLE IF EXISTS events;
 
 -- +goose StatementEnd

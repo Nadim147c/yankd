@@ -10,7 +10,7 @@ import (
 	"github.com/Nadim147c/yankd/internal/models"
 )
 
-type Data struct {
+type Content struct {
 	ID     int64             `db:"id" json:"id"`
 	Hash   models.Hash       `db:"hash" json:"hash"`
 	IsText bool              `db:"is_text" json:"is_text"`
@@ -18,14 +18,14 @@ type Data struct {
 	Blob   []byte            `db:"blob" json:"blob"`
 }
 
-type DatasFt struct {
+type ContentsFt struct {
 	Text string `db:"text" json:"text"`
 }
 
 type Entry struct {
-	EventID  int64  `db:"event_id" json:"event_id"`
-	MimeType string `db:"mime_type" json:"mime_type"`
-	DataID   int64  `db:"data_id" json:"data_id"`
+	EventID   int64  `db:"event_id" json:"event_id"`
+	MimeType  string `db:"mime_type" json:"mime_type"`
+	ContentID int64  `db:"content_id" json:"content_id"`
 }
 
 type Event struct {

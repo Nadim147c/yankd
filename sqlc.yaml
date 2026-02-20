@@ -17,11 +17,11 @@ sql:
             go_type: time.Time
           - column: "*.best_rank"
             go_type: int64
-          - column: datas.hash
+          - column: contents.hash
             go_type:
               import: github.com/Nadim147c/yankd/internal/models
               type: Hash
-          - column: datas.text
+          - column: contents.text
             go_type:
               import: github.com/Nadim147c/yankd/internal/models
               type: NullString

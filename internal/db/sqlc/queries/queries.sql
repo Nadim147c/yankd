@@ -3,13 +3,13 @@ INSERT INTO events (primary_mime_type, time)
 VALUES (?, ?)
 RETURNING *;
 
--- name: CreateData :one
-INSERT INTO datas (hash, is_text, text, blob)
+-- name: CreateContent :one
+INSERT INTO contents (hash, is_text, text, blob)
 VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: CreateEntry :one
-INSERT INTO entries (event_id, mime_type, data_id)
+INSERT INTO entries (event_id, mime_type, content_id)
 VALUES (?, ?, ?)
 RETURNING *;
 
@@ -35,23 +35,23 @@ SELECT * FROM events
 WHERE id = ?;
 
 -- name: GetDatasByHash :many
-SELECT * FROM datas
+SELECT * FROM contents
 WHERE hash = ?;
 
 -- name: GetEntries :many
-SELECT entries.*, datas.* FROM entries
-JOIN datas ON datas.id = entries.data_id
+SELECT entries.*, contents.* FROM entries
+JOIN contents ON contents.id = entries.content_id
 WHERE entries.event_id IN (sqlc.slice('ids'));
 
 -- name: FullTextSearch :many
-WITH matched_datas AS (
-  SELECT text FROM datas_fts
-  WHERE datas_fts.text MATCH ?
+WITH matched_contents AS (
+  SELECT text FROM contents_fts
+  WHERE contents_fts.text MATCH ?
 )
 SELECT e.id, MIN(m.rank) AS best_rank
-FROM matched_datas m
-JOIN datas d ON d.id = m.rowid
-JOIN entries en ON en.data_id = d.id
+FROM matched_contents m
+JOIN contents d ON d.id = m.rowid
+JOIN entries en ON en.content_id = d.id
 JOIN events e ON e.id = en.event_id
 GROUP BY e.id
 ORDER BY best_rank;

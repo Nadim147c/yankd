@@ -13,32 +13,32 @@ import (
 	"github.com/Nadim147c/yankd/internal/models"
 )
 
-const createData = `-- name: CreateData :one
-INSERT INTO datas (hash, is_text, text, blob)
+const createContent = `-- name: CreateContent :one
+INSERT INTO contents (hash, is_text, text, blob)
 VALUES (?, ?, ?, ?)
 RETURNING id, hash, is_text, text, blob
 `
 
-type CreateDataParams struct {
+type CreateContentParams struct {
 	Hash   models.Hash       `db:"hash" json:"hash"`
 	IsText bool              `db:"is_text" json:"is_text"`
 	Text   models.NullString `db:"text" json:"text"`
 	Blob   []byte            `db:"blob" json:"blob"`
 }
 
-// CreateData
+// CreateContent
 //
-//	INSERT INTO datas (hash, is_text, text, blob)
+//	INSERT INTO contents (hash, is_text, text, blob)
 //	VALUES (?, ?, ?, ?)
 //	RETURNING id, hash, is_text, text, blob
-func (q *Queries) CreateData(ctx context.Context, arg CreateDataParams) (Data, error) {
-	row := q.db.QueryRowContext(ctx, createData,
+func (q *Queries) CreateContent(ctx context.Context, arg CreateContentParams) (Content, error) {
+	row := q.db.QueryRowContext(ctx, createContent,
 		arg.Hash,
 		arg.IsText,
 		arg.Text,
 		arg.Blob,
 	)
-	var i Data
+	var i Content
 	err := row.Scan(
 		&i.ID,
 		&i.Hash,
@@ -50,26 +50,26 @@ func (q *Queries) CreateData(ctx context.Context, arg CreateDataParams) (Data, e
 }
 
 const createEntry = `-- name: CreateEntry :one
-INSERT INTO entries (event_id, mime_type, data_id)
+INSERT INTO entries (event_id, mime_type, content_id)
 VALUES (?, ?, ?)
-RETURNING event_id, mime_type, data_id
+RETURNING event_id, mime_type, content_id
 `
 
 type CreateEntryParams struct {
-	EventID  int64  `db:"event_id" json:"event_id"`
-	MimeType string `db:"mime_type" json:"mime_type"`
-	DataID   int64  `db:"data_id" json:"data_id"`
+	EventID   int64  `db:"event_id" json:"event_id"`
+	MimeType  string `db:"mime_type" json:"mime_type"`
+	ContentID int64  `db:"content_id" json:"content_id"`
 }
 
 // CreateEntry
 //
-//	INSERT INTO entries (event_id, mime_type, data_id)
+//	INSERT INTO entries (event_id, mime_type, content_id)
 //	VALUES (?, ?, ?)
-//	RETURNING event_id, mime_type, data_id
+//	RETURNING event_id, mime_type, content_id
 func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) (Entry, error) {
-	row := q.db.QueryRowContext(ctx, createEntry, arg.EventID, arg.MimeType, arg.DataID)
+	row := q.db.QueryRowContext(ctx, createEntry, arg.EventID, arg.MimeType, arg.ContentID)
 	var i Entry
-	err := row.Scan(&i.EventID, &i.MimeType, &i.DataID)
+	err := row.Scan(&i.EventID, &i.MimeType, &i.ContentID)
 	return i, err
 }
 
@@ -139,14 +139,14 @@ func (q *Queries) DeleteEvents(ctx context.Context, ids []int64) (int64, error) 
 }
 
 const fullTextSearch = `-- name: FullTextSearch :many
-WITH matched_datas AS (
-  SELECT rowid, rank FROM datas_fts
-  WHERE datas_fts MATCH ?
+WITH matched_contents AS (
+  SELECT text FROM contents_fts
+  WHERE contents_fts.text MATCH ?
 )
 SELECT e.id, MIN(m.rank) AS best_rank
-FROM matched_datas m
-JOIN datas d ON d.id = m.rowid
-JOIN entries en ON en.data_id = d.id
+FROM matched_contents m
+JOIN contents d ON d.id = m.rowid
+JOIN entries en ON en.content_id = d.id
 JOIN events e ON e.id = en.event_id
 GROUP BY e.id
 ORDER BY best_rank
@@ -159,14 +159,14 @@ type FullTextSearchRow struct {
 
 // FullTextSearch
 //
-//	WITH matched_datas AS (
-//	  SELECT rowid, rank FROM datas_fts
-//	  WHERE datas_fts MATCH ?
+//	WITH matched_contents AS (
+//	  SELECT text FROM contents_fts
+//	  WHERE contents_fts.text MATCH ?
 //	)
 //	SELECT e.id, MIN(m.rank) AS best_rank
-//	FROM matched_datas m
-//	JOIN datas d ON d.id = m.rowid
-//	JOIN entries en ON en.data_id = d.id
+//	FROM matched_contents m
+//	JOIN contents d ON d.id = m.rowid
+//	JOIN entries en ON en.content_id = d.id
 //	JOIN events e ON e.id = en.event_id
 //	GROUP BY e.id
 //	ORDER BY best_rank
@@ -194,23 +194,23 @@ func (q *Queries) FullTextSearch(ctx context.Context, text string) ([]FullTextSe
 }
 
 const getDatasByHash = `-- name: GetDatasByHash :many
-SELECT id, hash, is_text, text, blob FROM datas
+SELECT id, hash, is_text, text, blob FROM contents
 WHERE hash = ?
 `
 
 // GetDatasByHash
 //
-//	SELECT id, hash, is_text, text, blob FROM datas
+//	SELECT id, hash, is_text, text, blob FROM contents
 //	WHERE hash = ?
-func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Data, error) {
+func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Content, error) {
 	rows, err := q.db.QueryContext(ctx, getDatasByHash, hash)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Data{}
+	items := []Content{}
 	for rows.Next() {
-		var i Data
+		var i Content
 		if err := rows.Scan(
 			&i.ID,
 			&i.Hash,
@@ -232,26 +232,26 @@ func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Data,
 }
 
 const getEntries = `-- name: GetEntries :many
-SELECT entries.event_id, entries.mime_type, entries.data_id, datas.id, datas.hash, datas.is_text, datas.text, datas.blob FROM entries
-JOIN datas ON datas.id = entries.data_id
+SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.text, contents.blob FROM entries
+JOIN contents ON contents.id = entries.content_id
 WHERE entries.event_id IN (/*SLICE:ids*/?)
 `
 
 type GetEntriesRow struct {
-	EventID  int64             `db:"event_id" json:"event_id"`
-	MimeType string            `db:"mime_type" json:"mime_type"`
-	DataID   int64             `db:"data_id" json:"data_id"`
-	ID       int64             `db:"id" json:"id"`
-	Hash     models.Hash       `db:"hash" json:"hash"`
-	IsText   bool              `db:"is_text" json:"is_text"`
-	Text     models.NullString `db:"text" json:"text"`
-	Blob     []byte            `db:"blob" json:"blob"`
+	EventID   int64             `db:"event_id" json:"event_id"`
+	MimeType  string            `db:"mime_type" json:"mime_type"`
+	ContentID int64             `db:"content_id" json:"content_id"`
+	ID        int64             `db:"id" json:"id"`
+	Hash      models.Hash       `db:"hash" json:"hash"`
+	IsText    bool              `db:"is_text" json:"is_text"`
+	Text      models.NullString `db:"text" json:"text"`
+	Blob      []byte            `db:"blob" json:"blob"`
 }
 
 // GetEntries
 //
-//	SELECT entries.event_id, entries.mime_type, entries.data_id, datas.id, datas.hash, datas.is_text, datas.text, datas.blob FROM entries
-//	JOIN datas ON datas.id = entries.data_id
+//	SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.text, contents.blob FROM entries
+//	JOIN contents ON contents.id = entries.content_id
 //	WHERE entries.event_id IN (/*SLICE:ids*/?)
 func (q *Queries) GetEntries(ctx context.Context, ids []int64) ([]GetEntriesRow, error) {
 	query := getEntries
@@ -275,7 +275,7 @@ func (q *Queries) GetEntries(ctx context.Context, ids []int64) ([]GetEntriesRow,
 		if err := rows.Scan(
 			&i.EventID,
 			&i.MimeType,
-			&i.DataID,
+			&i.ContentID,
 			&i.ID,
 			&i.Hash,
 			&i.IsText,
