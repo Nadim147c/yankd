@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 
@@ -13,18 +14,21 @@ import (
 )
 
 func init() {
-	Command.AddCommand(watchCommand)
+	Command.AddCommand(daemonCommand)
 }
 
-var watchCommand = &cobra.Command{
+var daemonCommand = &cobra.Command{
 	Use:     "daemon",
 	Aliases: []string{"watch"},
 	Short:   "Start yankd deamon",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		ctx := cmd.Context()
+		ctx, cancel := context.WithCancel(cmd.Context())
+		defer cancel()
 
 		clips := make(chan models.ClipboardEvent)
-		context.AfterFunc(ctx, func() { close(clips) })
+		context.AfterFunc(ctx, func() {
+			close(clips)
+		})
 
 		db, err := db.CreateDB()
 		if err != nil {
@@ -39,8 +43,22 @@ var watchCommand = &cobra.Command{
 
 		ipcServer := ipc.NewServer(db, wlClient)
 
-		wg.Go(func() { wlClient.Listen(ctx, clips) }) //nolint
-		wg.Go(func() { ipcServer.Listen(ctx) })       //nolint
+		wg.Go(func() {
+			err := wlClient.Listen(ctx, clips)
+			if err != nil && !errors.Is(context.Canceled, err) {
+				slog.Error("failed to start wayland client", "error", err)
+				cancel()
+			}
+		})
+
+		wg.Go(func() {
+			err := ipcServer.Listen(ctx)
+			if err != nil && !errors.Is(context.Canceled, err) {
+				slog.Error("failed to start ipc client", "error", err)
+				cancel()
+			}
+		})
+
 		wg.Go(func() {
 			for clip := range clips {
 				slog.Debug("Saving content to clipboard history", "mime", clip.PrimaryMimeType)

@@ -7,21 +7,14 @@ import (
 )
 
 func TestIpcEcho(t *testing.T) {
-	file := filepath.Join(t.TempDir(), SocketName)
-	internalSocketPathOnlyForTesting = file
+	internalSocketPathOnlyForTesting = filepath.Join(t.TempDir(), SocketName)
 	server := NewServer(nil, nil)
-
 	go server.Listen(t.Context())
 
-	time.Sleep(50 * time.Millisecond)
-
 	client := NewClient()
-	if err := client.Connect(); err != nil {
-		t.Fatalf("failed to connect client: %v", err)
-	}
-	defer client.Close()
-
 	msg := "hello world"
+
+	time.Sleep(100 * time.Millisecond)
 
 	resp, err := client.SendEcho(msg)
 	if err != nil {
@@ -34,25 +27,19 @@ func TestIpcEcho(t *testing.T) {
 }
 
 func TestIpcPing(t *testing.T) {
-	file := filepath.Join(t.TempDir(), SocketName)
-	internalSocketPathOnlyForTesting = file
+	internalSocketPathOnlyForTesting = filepath.Join(t.TempDir(), SocketName)
 	server := NewServer(nil, nil)
-
 	go server.Listen(t.Context())
 
-	time.Sleep(50 * time.Millisecond)
-
 	client := NewClient()
-	if err := client.Connect(); err != nil {
-		t.Fatalf("failed to connect client: %v", err)
-	}
-	defer client.Close()
+
+	time.Sleep(100 * time.Millisecond)
 
 	oneWay, roundTrip, err := client.SendPing()
 	if err != nil {
 		t.Fatalf("SendEcho failed: %v", err)
 	}
 
-	t.Log("one-way latency", oneWay)
+	t.Log("one-way latency (server time)", oneWay)
 	t.Log("round-trip latency", roundTrip)
 }

@@ -34,6 +34,11 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataControlDeviceV1DataOfferEvent) {
 	slog.Debug("data offer received", "offer_id", e.Id.Id())
 
+	if c.paused.Load() {
+		slog.Debug("Skipping clipboard", "reason", "paused")
+		return
+	}
+
 	collector := &mimeHandler{}
 	e.Id.AddOfferHandler(collector)
 

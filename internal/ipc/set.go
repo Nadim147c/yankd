@@ -1,34 +1,43 @@
 package ipc
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
-	"net"
-	"strconv"
 )
 
-func (s *Server) HandleSet(conn *net.UnixConn, payload string) {
-	id, err := strconv.ParseInt(payload, 10, 64)
+func (s *Server) handleSet(req *msg) *msg {
+	var id int64
+	_, err := fmt.Fscanf(req, "%d", &id)
 	if err != nil {
-		fmt.Fprintf(conn, "%s: %v\n", BadRequest, err) //nolint:errcheck
-		return
+		return newErrMsg(err)
 	}
+
 	event, err := s.db.Get(s.ctx, id)
 	if err != nil {
-		fmt.Fprintf(conn, "%s: %v\n", BadRequest, err) //nolint:errcheck
-		return
+		return newErrMsg(err)
 	}
+
 	slog.Debug("setting/offering clipboard!")
 	err = s.cb.SetClipboard(event)
 	if err != nil {
-		fmt.Fprintf(conn, "%s: %v\n", BadRequest, err) //nolint:errcheck
-		return
+		return newErrMsg(err)
 	}
 
-	fmt.Fprintln(conn, Success) //nolint:errcheck
+	return new(msg)
 }
 
-func (c *Client) SendSet(id int64) (string, error) {
-	resp, err := c.Send("set", strconv.FormatInt(id, 10))
-	return string(resp), err
+func (c *Client) SendSet(id int64) error {
+	req := new(msg)
+	req.command = commandSet
+	fmt.Fprint(req, id)
+	resp, err := c.sendMsg(req)
+	if err != nil {
+		return err
+	}
+	if resp.status != statusOk {
+		fmt.Println(resp.status, resp.String())
+		return errors.New(resp.String())
+	}
+	return nil
 }

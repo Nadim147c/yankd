@@ -19,8 +19,6 @@ type Client struct {
 	display  *wl.Display
 	registry *wl.Registry
 
-	connected atomic.Bool
-
 	// set types
 	mimes map[string][]byte
 	event *models.ClipboardEvent
@@ -32,7 +30,10 @@ type Client struct {
 	seatGlobals   map[uint32]uint32
 	deviceName    uint32
 	deviceVersion uint32
-	closed        atomic.Bool
+
+	connected atomic.Bool
+	closed    atomic.Bool
+	paused    atomic.Bool
 }
 
 // NewClient creates a new wayland client.
@@ -41,6 +42,10 @@ func NewClient() *Client {
 	c.seatGlobals = make(map[uint32]uint32)
 	slog.Debug("clipboard client created")
 	return c
+}
+
+func (c *Client) SetPaused(b bool) {
+	c.paused.Store(b)
 }
 
 // Close closes the underlying socket connection.

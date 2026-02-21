@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/Nadim147c/yankd/internal/db"
@@ -34,22 +33,6 @@ var setCommand = &cobra.Command{
 		}
 
 		ipcClient := ipc.NewClient()
-
-		err = ipcClient.Connect()
-		if err != nil {
-			return err
-		}
-		defer ipcClient.Close()
-
-		resp, err := ipcClient.SendSet(id)
-		if err != nil {
-			return err
-		}
-
-		if resp != ipc.Success {
-			errors.New("failed for unknow reason")
-		}
-
-		return nil
+		return ipcClient.SendSet(id)
 	},
 }

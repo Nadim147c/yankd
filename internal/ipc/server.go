@@ -1,14 +1,13 @@
 package ipc
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/Nadim147c/yankd/internal/clipboard"
@@ -18,8 +17,6 @@ import (
 const (
 	MaxBufferSize = 100 * 1024 * 1024
 	SocketName    = "yankd.sock" // default socket file name
-	BadRequest    = "<BAD_REQUEST>"
-	Success       = "<SUCCESS>"
 )
 
 var internalSocketPathOnlyForTesting string
@@ -39,10 +36,9 @@ func getSocketPath() string {
 
 // Server listens on a Unix socket, accepts connections, and processes messages.
 type Server struct {
-	listener *net.UnixListener
-	db       *db.DB
-	cb       *clipboard.Client
-	ctx      context.Context
+	db  *db.DB
+	cb  *clipboard.Client
+	ctx context.Context
 }
 
 var ErrAlreadyRunning = errors.New("another instance is running")
@@ -77,21 +73,21 @@ func (s *Server) Listen(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on unix socket: %w", err)
 	}
-	s.listener = listener
-	defer s.listener.Close()
+	defer listener.Close()
 
 	// Channel to signal when accept loop should stop
 	done := make(chan struct{})
 	go func() {
 		<-ctx.Done()
-		_ = s.listener.Close() // this will break the Accept loop
+		_ = listener.Close() // this will break the Accept loop
 		close(done)
 	}()
 
 	var wg sync.WaitGroup
 
+	slog.Info("ipc server is listening for connection")
 	for {
-		conn, err := s.listener.AcceptUnix()
+		conn, err := listener.AcceptUnix()
 		if err != nil {
 			// If the listener was closed due to context cancellation, return nil
 			// (normal shutdown)
@@ -113,30 +109,28 @@ func (s *Server) Listen(ctx context.Context) error {
 func (s *Server) handleConnection(conn *net.UnixConn) {
 	defer conn.Close()
 
-	scanner := bufio.NewScanner(conn)
-	scanner.Buffer(nil, MaxBufferSize)
-
-	for scanner.Scan() {
-		line := scanner.Text() // reads up to newline
-		cmd, payload, found := strings.Cut(line, ":")
-		if !found {
-			continue
-		}
-		cmd = strings.TrimSpace(cmd)
-
-		switch cmd {
-		case "echo":
-			s.HandleEcho(conn, payload)
-		case "ping":
-			s.HandlePing(conn, payload)
-		// case "copy":
-		// 	s.HandleCopy(conn, payload)
-		case "set":
-			s.HandleSet(conn, payload)
-		}
+	req := new(msg)
+	if err := req.Decode(conn); err != nil {
+		slog.Error("failed to decode request", "error", err)
+		return
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "connection read error: %v\n", err)
+	var resp *msg
+	switch req.command {
+	case commandNull:
+		resp = &msg{status: statusFatal}
+	case commandEcho:
+		resp = s.handleEcho(req)
+	case commandPing:
+		resp = s.handlePing(req)
+	case commandSet:
+		resp = s.handleSet(req)
 	}
+
+	if resp == nil {
+		resp = new(msg)
+		resp.status = statusFatal
+	}
+
+	resp.Encode(conn)
 }

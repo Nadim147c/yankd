@@ -2,26 +2,24 @@ package ipc
 
 import (
 	"fmt"
-	"net"
-	"strconv"
 	"time"
 )
 
-func (s *Server) HandleEcho(conn *net.UnixConn, payload string) {
-	_, _ = fmt.Fprintln(conn, payload)
+func (s *Server) handleEcho(req *msg) *msg {
+	return req
 }
 
 func (c *Client) SendEcho(msg string) (string, error) {
-	resp, err := c.Send("echo", msg)
-	return string(resp), err
+	resp, err := c.send(commandEcho, []byte(msg))
+	return resp.String(), err
 }
 
-func (s *Server) HandlePing(conn *net.UnixConn, _ string) {
-	_, _ = fmt.Fprintln(conn, time.Now().UnixNano())
+func (s *Server) handlePing(*msg) *msg {
+	msg := new(msg)
+	fmt.Fprint(msg, time.Now().UnixNano()) //nolint:errcheck
+	return msg
 }
 
-// SendPing sends a ping to the server and returns the estimated one-way
-// latency (client → server) and the full round-trip latency.
 func (c *Client) SendPing() (
 	oneWayLatency time.Duration,
 	roundTripLatency time.Duration,
@@ -29,12 +27,13 @@ func (c *Client) SendPing() (
 ) {
 	startTime := time.Now()
 
-	resp, err := c.Send("ping")
+	resp, err := c.send(commandPing, nil)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	serverNano, err := strconv.ParseInt(string(resp), 10, 64)
+	var serverNano int64
+	_, err = fmt.Fscanf(resp, "%d", &serverNano)
 	if err != nil {
 		return 0, 0, err
 	}
