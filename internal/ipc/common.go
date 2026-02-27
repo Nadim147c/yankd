@@ -17,6 +17,7 @@ const (
 	commandEcho
 	commandPing
 	commandSet
+	commandPause
 )
 
 const (

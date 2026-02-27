@@ -44,8 +44,19 @@ func NewClient() *Client {
 	return c
 }
 
-func (c *Client) SetPaused(b bool) {
+func (c *Client) SetPaused(b bool) bool {
+	if b {
+		slog.Info("Saving history has been paused")
+	} else {
+		slog.Info("Saving history has been resumed")
+	}
 	c.paused.Store(b)
+	return b
+}
+
+func (c *Client) TogglePaused() bool {
+	currenState := c.paused.Load()
+	return c.SetPaused(!currenState)
 }
 
 // Close closes the underlying socket connection.

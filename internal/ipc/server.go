@@ -125,6 +125,8 @@ func (s *Server) handleConnection(conn *net.UnixConn) {
 		resp = s.handlePing(req)
 	case commandSet:
 		resp = s.handleSet(req)
+	case commandPause:
+		resp = s.handlePause(req)
 	}
 
 	if resp == nil {
