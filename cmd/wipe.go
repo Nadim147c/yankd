@@ -20,11 +20,17 @@ var wipeCommand = &cobra.Command{
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		db, err := db.CreateDB()
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+
 		n, err := db.Wipe(cmd.Context())
 		if err != nil {
 			return err
 		}
 		slog.Info("Clipboard history deleted", "deleted-items", n)
-		return db.Close()
+		return nil
 	},
 }

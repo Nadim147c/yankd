@@ -25,24 +25,28 @@ var deleteCommand = &cobra.Command{
 
   # Delete a range of items (using shell expansion)
   yankd delete {20..25}
-
-  # Delete sensitive items like PEM encoded keys
-  yankd search --limit 10000 "BEGIN KEY" | awk '{ print $1 }' | xargs yankd delete
   `,
 	Args: cobra.MinimumNArgs(1),
 	PreRunE: func(cmd *cobra.Command, _ []string) error {
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ids, err := cast.ToUintSliceE(args)
+		ids, err := cast.ToInt64SliceE(args)
 		if err != nil {
 			return err
 		}
+
+		db, err := db.CreateDB()
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+
 		n, err := db.Delete(cmd.Context(), ids)
 		if err != nil {
 			return err
 		}
 		slog.Info("Clipboard history deleted", "deleted-items", n)
-		return db.Close()
+		return nil
 	},
 }

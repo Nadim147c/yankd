@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
-	"text/template"
+	"time"
 
 	"github.com/Nadim147c/yankd/internal/db"
-	"github.com/Nadim147c/yankd/pkg/clipboard"
+	"github.com/Nadim147c/yankd/internal/models"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,16 +17,12 @@ import (
 func init() {
 	Command.AddCommand(searchCommand)
 	fset := searchCommand.Flags()
-	fset.BoolP("sync", "s", false, "synchronize database before search")
 	fset.IntP("limit", "n", 40, "number of items to display")
-	fset.StringP(
-		"format", "f", "simple",
-		"output format (simple, json, json-stream, or Go template string)",
-	)
+	fset.StringP("format", "f", "", "number of items to display")
 }
 
 var searchCommand = &cobra.Command{
-	Use:   "search <query>",
+	Use:   "search <...query>",
 	Short: "Search clipboard history",
 	Long:  "Search through clipboard history for items matching the query",
 	Example: `
@@ -33,13 +30,10 @@ var searchCommand = &cobra.Command{
   yankd search password
 
   # Limit results to 10 items in JSON format
-  yankd search password --limit 10 --format json
+  yankd search password --limit 10
 
   # Sync database before searching
   yankd search password --sync
-
-  # Use custom template
-  yankd search password --format "{{.ID}}: {{.Text}}"
   `,
 	PreRunE: func(cmd *cobra.Command, _ []string) error {
 		viper.SetDefault("limit", 40)
@@ -48,92 +42,86 @@ var searchCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 
-		sync := viper.GetBool("sync")
 		limit := viper.GetInt("limit")
 
-		clips, err := db.Search(cmd.Context(), query, limit, sync)
+		db, err := db.CreateDB()
 		if err != nil {
 			return err
 		}
 		defer db.Close()
 
-		format := viper.GetString("format")
-		switch strings.ToLower(format) {
-		case "simple":
-			return formatSimple(clips)
+		events, err := db.Search(cmd.Context(), query, limit)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+
+		switch viper.GetString("format") {
 		case "json":
-			return formatJSON(clips)
-		case "json-stream":
-			return formatJSONStream(clips)
+			return formatJSON(events)
+		case "short-json":
+			return formatSimpleJSON(events)
 		default:
-			return formatTemplate(clips, format)
+			return formatPlain(events)
 		}
 	},
 }
 
-// formatSimple outputs results in a simple tab-separated format
-func formatSimple(clips []clipboard.Clip) error {
-	for _, clip := range clips {
-		fmt.Printf("%d\t%s\t%s\n", clip.ID, clip.Mime, simpleClip(clip))
+type SimplifedEvent struct {
+	ID       int64     `json:"id"`
+	MimeType string    `json:"mime_type"`
+	Time     time.Time `json:"time"`
+	Preview  string    `json:"preview"`
+}
+
+func formatSimpleJSON(events []models.ClipboardEvent) error {
+	simpleEvents := make([]SimplifedEvent, 0, len(events))
+	for event := range slices.Values(events) {
+		se := SimplifedEvent{
+			ID:       event.ID,
+			MimeType: event.PrimaryMimeType,
+			Time:     event.Time,
+			Preview:  getPreview(event.Entries),
+		}
+		simpleEvents = append(simpleEvents, se)
+	}
+	return json.NewEncoder(os.Stdout).Encode(simpleEvents)
+}
+
+func formatJSON(events []models.ClipboardEvent) error {
+	return json.NewEncoder(os.Stdout).Encode(events)
+}
+
+func getPreview(entries []models.ClipboardEntry) string {
+	m := make(map[models.Hash]struct{}, len(entries))
+	uniqueEntries := slices.DeleteFunc(entries, func(e models.ClipboardEntry) bool {
+		if !e.IsText || !e.Text.Valid {
+			return true
+		}
+		if _, ok := m[e.Hash]; ok {
+			return true
+		}
+		m[e.Hash] = struct{}{}
+		return false
+	})
+
+	words := make([]string, 0, len(uniqueEntries))
+	for entry := range slices.Values(uniqueEntries) {
+		split := strings.Fields(entry.Text.String)
+		words = append(words, split...)
+	}
+
+	if len(words) == 0 {
+		return "<unknow clipboard>"
+	}
+
+	return strings.Join(words, " ")
+}
+
+func formatPlain(events []models.ClipboardEvent) error { //nolint:unparam
+	for event := range slices.Values(events) {
+		preview := fmt.Sprintf("%d\t%s\t%s", event.ID, event.PrimaryMimeType, getPreview(event.Entries))
+		_, _ = fmt.Fprintln(os.Stdout, preview)
 	}
 	return nil
-}
-
-// formatJSON outputs all results as a single JSON array
-func formatJSON(clips []clipboard.Clip) error {
-	return json.NewEncoder(os.Stdout).Encode(clips)
-}
-
-// formatJSONStream outputs each result as a single-line JSON object
-func formatJSONStream(clips []clipboard.Clip) error {
-	encoder := json.NewEncoder(os.Stdout)
-	for _, clip := range clips {
-		if err := encoder.Encode(clip); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-var templateFunc = template.FuncMap{
-	"simplify": simpleText,
-	"fallback": fallbackText,
-}
-
-func simpleText(s string) string {
-	return strings.Join(strings.Fields(s), " ")
-}
-
-// fallbackText returns the first non-empty string from the provided values
-func fallbackText(values ...string) string {
-	for _, val := range values {
-		if val != "" {
-			return val
-		}
-	}
-	return ""
-}
-
-// formatTemplate outputs results using a Go template string
-func formatTemplate(clips []clipboard.Clip, tmplStr string) error {
-	tmpl, err := template.New("search").Funcs(templateFunc).Parse(tmplStr)
-	if err != nil {
-		return fmt.Errorf("invalid template: %w", err)
-	}
-	for _, clip := range clips {
-		if err := tmpl.Execute(os.Stdout, clip); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// simpleClip extracts and formats text from a clipboard item
-func simpleClip(clip clipboard.Clip) string {
-	text := fallbackText(clip.Text, clip.BlobPath, clip.Metadata)
-	out := simpleText(text)
-	if len(out) > 100 {
-		out = out[:100]
-	}
-	return out
 }

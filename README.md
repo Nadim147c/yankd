@@ -17,11 +17,10 @@ A wayland native clipboard manager that implement `wlr-data-control-unstable-v1`
 
 - [x] Watch for clipboard change.
 - [x] Full text search clipboard history.
-  - [ ] Improve search (current it prioritizes the image items).
 - [x] Delete clip item.
 - [x] Wipe database.
-- [ ] Native clipboard offering.
-  - [ ] Remove wl-clipboard dependencies.
+- [x] Native clipboard offering.
+- [ ] Quickshell example.
 - [ ] Stable version!
 
 ## Install

@@ -4,3 +4,4 @@ Makefile.local
 result
 .direnv/*
 vendor/
+tmp
