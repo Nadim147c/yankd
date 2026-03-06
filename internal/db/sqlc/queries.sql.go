@@ -140,8 +140,8 @@ func (q *Queries) DeleteEvents(ctx context.Context, ids []int64) (int64, error) 
 
 const fullTextSearch = `-- name: FullTextSearch :many
 WITH matched_contents AS (
-  SELECT text FROM contents_fts
-  WHERE contents_fts.text MATCH ?
+  SELECT rowid, rank FROM contents_fts
+  WHERE contents_fts MATCH ?
 )
 SELECT e.id, MIN(m.rank) AS best_rank
 FROM matched_contents m
@@ -160,8 +160,8 @@ type FullTextSearchRow struct {
 // FullTextSearch
 //
 //	WITH matched_contents AS (
-//	  SELECT text FROM contents_fts
-//	  WHERE contents_fts.text MATCH ?
+//	  SELECT rowid, rank FROM contents_fts
+//	  WHERE contents_fts MATCH ?
 //	)
 //	SELECT e.id, MIN(m.rank) AS best_rank
 //	FROM matched_contents m

@@ -24,8 +24,8 @@ generate-sqlc:
 
 	@echo "Fixing generated code..."
 	@sed -i \
-		-e 's/WHERE datas_fts.text MATCH ?/WHERE datas_fts MATCH ?/' \
-		-e 's/SELECT text FROM datas_fts/SELECT rowid, rank FROM datas_fts/' \
+		-e 's/WHERE contents_fts.text MATCH ?/WHERE contents_fts MATCH ?/' \
+		-e 's/SELECT text FROM contents_fts/SELECT rowid, rank FROM contents_fts/' \
 	  -e 's/BestRank interface{}/BestRank float64/' \
 		internal/db/sqlc/queries.sql.go
 
