@@ -30,19 +30,24 @@ func init() {
 	carapace.Gen(Command)
 }
 
-// Command is the root command for yankd
+// Command is the root command for yankd.
 var Command = &cobra.Command{
 	Use:   "yankd",
 	Short: "A wayland native clipboard manager",
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		viper.BindPFlags(cmd.Flags())
+		// completion command do not need log setup
+		if cmd.Name() == "_carapace" {
+			return nil
+		}
+
+		viper.BindPFlags(cmd.Flags()) //nolint
 
 		level := -log.Level(viper.GetInt("verbose") * 4)
 		if viper.GetBool("quiet") {
 			level = math.MaxInt
 		}
 
-		logger := log.NewWithOptions(os.Stderr, log.Options{
+		logger := log.NewWithOptions(os.Stderr, log.Options{ //nolint
 			TimeFormat: time.RFC822,
 			Level:      level,
 		})
@@ -58,7 +63,7 @@ var Command = &cobra.Command{
 	},
 }
 
-// Execute runs the cobra cli
+// Execute runs the cobra cli.
 func Execute(version string) {
 	err := fang.Execute(
 		context.Background(),
