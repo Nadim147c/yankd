@@ -19,7 +19,7 @@ package main
 
 import "github.com/Nadim147c/yankd/cmd"
 
-// should be set by ldflags
+// should be set by ldflags.
 var version string
 
 func main() {
