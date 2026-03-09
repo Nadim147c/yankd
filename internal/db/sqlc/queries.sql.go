@@ -14,36 +14,29 @@ import (
 )
 
 const createContent = `-- name: CreateContent :one
-INSERT INTO contents (hash, is_text, text, blob)
-VALUES (?, ?, ?, ?)
-RETURNING id, hash, is_text, text, blob
+INSERT INTO contents (hash, is_text, blob)
+VALUES (?, ?, ?)
+RETURNING id, hash, is_text, blob
 `
 
 type CreateContentParams struct {
-	Hash   models.Hash       `db:"hash" json:"hash"`
-	IsText bool              `db:"is_text" json:"is_text"`
-	Text   models.NullString `db:"text" json:"text"`
-	Blob   []byte            `db:"blob" json:"blob"`
+	Hash   models.Hash `db:"hash" json:"hash"`
+	IsText bool        `db:"is_text" json:"is_text"`
+	Blob   []byte      `db:"blob" json:"blob"`
 }
 
 // CreateContent
 //
-//	INSERT INTO contents (hash, is_text, text, blob)
-//	VALUES (?, ?, ?, ?)
-//	RETURNING id, hash, is_text, text, blob
+//	INSERT INTO contents (hash, is_text, blob)
+//	VALUES (?, ?, ?)
+//	RETURNING id, hash, is_text, blob
 func (q *Queries) CreateContent(ctx context.Context, arg CreateContentParams) (Content, error) {
-	row := q.db.QueryRowContext(ctx, createContent,
-		arg.Hash,
-		arg.IsText,
-		arg.Text,
-		arg.Blob,
-	)
+	row := q.db.QueryRowContext(ctx, createContent, arg.Hash, arg.IsText, arg.Blob)
 	var i Content
 	err := row.Scan(
 		&i.ID,
 		&i.Hash,
 		&i.IsText,
-		&i.Text,
 		&i.Blob,
 	)
 	return i, err
@@ -74,25 +67,31 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) (Entry
 }
 
 const createEvent = `-- name: CreateEvent :one
-INSERT INTO events (primary_mime_type, time)
-VALUES (?, ?)
-RETURNING id, primary_mime_type, time
+INSERT INTO events (primary_mime_type, time, preview)
+VALUES (?, ?, ?)
+RETURNING id, primary_mime_type, time, preview
 `
 
 type CreateEventParams struct {
 	PrimaryMimeType string    `db:"primary_mime_type" json:"primary_mime_type"`
 	Time            time.Time `db:"time" json:"time"`
+	Preview         string    `db:"preview" json:"preview"`
 }
 
 // CreateEvent
 //
-//	INSERT INTO events (primary_mime_type, time)
-//	VALUES (?, ?)
-//	RETURNING id, primary_mime_type, time
+//	INSERT INTO events (primary_mime_type, time, preview)
+//	VALUES (?, ?, ?)
+//	RETURNING id, primary_mime_type, time, preview
 func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error) {
-	row := q.db.QueryRowContext(ctx, createEvent, arg.PrimaryMimeType, arg.Time)
+	row := q.db.QueryRowContext(ctx, createEvent, arg.PrimaryMimeType, arg.Time, arg.Preview)
 	var i Event
-	err := row.Scan(&i.ID, &i.PrimaryMimeType, &i.Time)
+	err := row.Scan(
+		&i.ID,
+		&i.PrimaryMimeType,
+		&i.Time,
+		&i.Preview,
+	)
 	return i, err
 }
 
@@ -138,69 +137,14 @@ func (q *Queries) DeleteEvents(ctx context.Context, ids []int64) (int64, error) 
 	return result.RowsAffected()
 }
 
-const fullTextSearch = `-- name: FullTextSearch :many
-WITH matched_contents AS (
-  SELECT rowid, rank FROM contents_fts
-  WHERE contents_fts MATCH ?
-)
-SELECT e.id, MIN(m.rank) AS best_rank
-FROM matched_contents m
-JOIN contents d ON d.id = m.rowid
-JOIN entries en ON en.content_id = d.id
-JOIN events e ON e.id = en.event_id
-GROUP BY e.id
-ORDER BY best_rank
-`
-
-type FullTextSearchRow struct {
-	ID       int64   `db:"id" json:"id"`
-	BestRank float64 `db:"best_rank" json:"best_rank"`
-}
-
-// FullTextSearch
-//
-//	WITH matched_contents AS (
-//	  SELECT rowid, rank FROM contents_fts
-//	  WHERE contents_fts MATCH ?
-//	)
-//	SELECT e.id, MIN(m.rank) AS best_rank
-//	FROM matched_contents m
-//	JOIN contents d ON d.id = m.rowid
-//	JOIN entries en ON en.content_id = d.id
-//	JOIN events e ON e.id = en.event_id
-//	GROUP BY e.id
-//	ORDER BY best_rank
-func (q *Queries) FullTextSearch(ctx context.Context, text string) ([]FullTextSearchRow, error) {
-	rows, err := q.db.QueryContext(ctx, fullTextSearch, text)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []FullTextSearchRow{}
-	for rows.Next() {
-		var i FullTextSearchRow
-		if err := rows.Scan(&i.ID, &i.BestRank); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getDatasByHash = `-- name: GetDatasByHash :many
-SELECT id, hash, is_text, text, blob FROM contents
+SELECT id, hash, is_text, blob FROM contents
 WHERE hash = ?
 `
 
 // GetDatasByHash
 //
-//	SELECT id, hash, is_text, text, blob FROM contents
+//	SELECT id, hash, is_text, blob FROM contents
 //	WHERE hash = ?
 func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Content, error) {
 	rows, err := q.db.QueryContext(ctx, getDatasByHash, hash)
@@ -215,7 +159,6 @@ func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Conte
 			&i.ID,
 			&i.Hash,
 			&i.IsText,
-			&i.Text,
 			&i.Blob,
 		); err != nil {
 			return nil, err
@@ -232,25 +175,24 @@ func (q *Queries) GetDatasByHash(ctx context.Context, hash models.Hash) ([]Conte
 }
 
 const getEntries = `-- name: GetEntries :many
-SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.text, contents.blob FROM entries
+SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.blob FROM entries
 JOIN contents ON contents.id = entries.content_id
 WHERE entries.event_id IN (/*SLICE:ids*/?)
 `
 
 type GetEntriesRow struct {
-	EventID   int64             `db:"event_id" json:"event_id"`
-	MimeType  string            `db:"mime_type" json:"mime_type"`
-	ContentID int64             `db:"content_id" json:"content_id"`
-	ID        int64             `db:"id" json:"id"`
-	Hash      models.Hash       `db:"hash" json:"hash"`
-	IsText    bool              `db:"is_text" json:"is_text"`
-	Text      models.NullString `db:"text" json:"text"`
-	Blob      []byte            `db:"blob" json:"blob"`
+	EventID   int64       `db:"event_id" json:"event_id"`
+	MimeType  string      `db:"mime_type" json:"mime_type"`
+	ContentID int64       `db:"content_id" json:"content_id"`
+	ID        int64       `db:"id" json:"id"`
+	Hash      models.Hash `db:"hash" json:"hash"`
+	IsText    bool        `db:"is_text" json:"is_text"`
+	Blob      []byte      `db:"blob" json:"blob"`
 }
 
 // GetEntries
 //
-//	SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.text, contents.blob FROM entries
+//	SELECT entries.event_id, entries.mime_type, entries.content_id, contents.id, contents.hash, contents.is_text, contents.blob FROM entries
 //	JOIN contents ON contents.id = entries.content_id
 //	WHERE entries.event_id IN (/*SLICE:ids*/?)
 func (q *Queries) GetEntries(ctx context.Context, ids []int64) ([]GetEntriesRow, error) {
@@ -279,7 +221,6 @@ func (q *Queries) GetEntries(ctx context.Context, ids []int64) ([]GetEntriesRow,
 			&i.ID,
 			&i.Hash,
 			&i.IsText,
-			&i.Text,
 			&i.Blob,
 		); err != nil {
 			return nil, err
@@ -296,30 +237,35 @@ func (q *Queries) GetEntries(ctx context.Context, ids []int64) ([]GetEntriesRow,
 }
 
 const getEvent = `-- name: GetEvent :one
-SELECT id, primary_mime_type, time FROM events
+SELECT id, primary_mime_type, time, preview FROM events
 WHERE id = ?
 `
 
 // GetEvent
 //
-//	SELECT id, primary_mime_type, time FROM events
+//	SELECT id, primary_mime_type, time, preview FROM events
 //	WHERE id = ?
 func (q *Queries) GetEvent(ctx context.Context, id int64) (Event, error) {
 	row := q.db.QueryRowContext(ctx, getEvent, id)
 	var i Event
-	err := row.Scan(&i.ID, &i.PrimaryMimeType, &i.Time)
+	err := row.Scan(
+		&i.ID,
+		&i.PrimaryMimeType,
+		&i.Time,
+		&i.Preview,
+	)
 	return i, err
 }
 
 const getEvents = `-- name: GetEvents :many
-SELECT id, primary_mime_type, time FROM events
-WHERE id IN (/*SLICE:ids*/?)
+SELECT id, primary_mime_type, time, preview FROM events
+WHERE events.id IN (/*SLICE:ids*/?)
 `
 
 // GetEvents
 //
-//	SELECT id, primary_mime_type, time FROM events
-//	WHERE id IN (/*SLICE:ids*/?)
+//	SELECT id, primary_mime_type, time, preview FROM events
+//	WHERE events.id IN (/*SLICE:ids*/?)
 func (q *Queries) GetEvents(ctx context.Context, ids []int64) ([]Event, error) {
 	query := getEvents
 	var queryParams []interface{}
@@ -339,7 +285,52 @@ func (q *Queries) GetEvents(ctx context.Context, ids []int64) ([]Event, error) {
 	items := []Event{}
 	for rows.Next() {
 		var i Event
-		if err := rows.Scan(&i.ID, &i.PrimaryMimeType, &i.Time); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PrimaryMimeType,
+			&i.Time,
+			&i.Preview,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEventsPreviewAndID = `-- name: GetEventsPreviewAndID :many
+SELECT id, primary_mime_type, preview FROM events
+ORDER BY time DESC
+LIMIT ?
+`
+
+type GetEventsPreviewAndIDRow struct {
+	ID              int64  `db:"id" json:"id"`
+	PrimaryMimeType string `db:"primary_mime_type" json:"primary_mime_type"`
+	Preview         string `db:"preview" json:"preview"`
+}
+
+// GetEventsPreviewAndID
+//
+//	SELECT id, primary_mime_type, preview FROM events
+//	ORDER BY time DESC
+//	LIMIT ?
+func (q *Queries) GetEventsPreviewAndID(ctx context.Context, limit int64) ([]GetEventsPreviewAndIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEventsPreviewAndID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetEventsPreviewAndIDRow{}
+	for rows.Next() {
+		var i GetEventsPreviewAndIDRow
+		if err := rows.Scan(&i.ID, &i.PrimaryMimeType, &i.Preview); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -354,16 +345,14 @@ func (q *Queries) GetEvents(ctx context.Context, ids []int64) ([]Event, error) {
 }
 
 const getLastEvents = `-- name: GetLastEvents :many
-SELECT id, primary_mime_type, time
-FROM events
+SELECT id, primary_mime_type, time, preview FROM events
 ORDER BY time DESC
 LIMIT ?
 `
 
 // GetLastEvents
 //
-//	SELECT id, primary_mime_type, time
-//	FROM events
+//	SELECT id, primary_mime_type, time, preview FROM events
 //	ORDER BY time DESC
 //	LIMIT ?
 func (q *Queries) GetLastEvents(ctx context.Context, limit int64) ([]Event, error) {
@@ -375,7 +364,12 @@ func (q *Queries) GetLastEvents(ctx context.Context, limit int64) ([]Event, erro
 	items := []Event{}
 	for rows.Next() {
 		var i Event
-		if err := rows.Scan(&i.ID, &i.PrimaryMimeType, &i.Time); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PrimaryMimeType,
+			&i.Time,
+			&i.Preview,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

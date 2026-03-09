@@ -16,7 +16,6 @@ func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.ClipboardEv
 			MimeType: e.MimeType,
 			Hash:     e.Hash,
 			IsText:   e.IsText,
-			Text:     e.Text,
 			Blob:     e.Blob,
 		}
 	}
@@ -25,6 +24,7 @@ func ModelConvert(e sqlc.Event, entries []sqlc.GetEntriesRow) models.ClipboardEv
 		Time:            e.Time,
 		PrimaryMimeType: e.PrimaryMimeType,
 		Entries:         clipEntries,
+		Preview:         e.Preview,
 	}
 }
 
@@ -90,9 +90,17 @@ func (db *DB) GetMany(ctx context.Context, ids []int64) ([]models.ClipboardEvent
 		entryMap[en.EventID] = append(entryMap[en.EventID], en)
 	}
 
-	result := make([]models.ClipboardEvent, len(events))
-	for i, ev := range events {
-		result[i] = ModelConvert(ev, entryMap[ev.ID])
+	eventMap := make(map[int64]sqlc.Event)
+	for _, ev := range events {
+		eventMap[ev.ID] = ev
+	}
+
+	result := make([]models.ClipboardEvent, 0, len(ids))
+	for _, id := range ids {
+		ev, exists := eventMap[id]
+		if exists {
+			result = append(result, ModelConvert(ev, entryMap[id]))
+		}
 	}
 
 	return result, nil

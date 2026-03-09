@@ -38,7 +38,6 @@ linters:
     - unconvert
     - unparam
     - whitespace
-    # - wrapcheck
   exclusions:
     rules:
       - text: '(slog|log)\.\w+'

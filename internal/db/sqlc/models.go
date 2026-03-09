@@ -11,15 +11,10 @@ import (
 )
 
 type Content struct {
-	ID     int64             `db:"id" json:"id"`
-	Hash   models.Hash       `db:"hash" json:"hash"`
-	IsText bool              `db:"is_text" json:"is_text"`
-	Text   models.NullString `db:"text" json:"text"`
-	Blob   []byte            `db:"blob" json:"blob"`
-}
-
-type ContentsFt struct {
-	Text string `db:"text" json:"text"`
+	ID     int64       `db:"id" json:"id"`
+	Hash   models.Hash `db:"hash" json:"hash"`
+	IsText bool        `db:"is_text" json:"is_text"`
+	Blob   []byte      `db:"blob" json:"blob"`
 }
 
 type Entry struct {
@@ -32,4 +27,5 @@ type Event struct {
 	ID              int64     `db:"id" json:"id"`
 	PrimaryMimeType string    `db:"primary_mime_type" json:"primary_mime_type"`
 	Time            time.Time `db:"time" json:"time"`
+	Preview         string    `db:"preview" json:"preview"`
 }

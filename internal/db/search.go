@@ -3,14 +3,17 @@ package db
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/Nadim147c/yankd/internal/models"
+	fzfAlgo "github.com/junegunn/fzf/src/algo"
+	"github.com/junegunn/fzf/src/util"
 )
 
 // Search runs full-text search in database and returns matched items.
 // If query is empty, it returns the latest items instead.
-func (db *DB) Search(ctx context.Context, query string, limit int) ([]models.ClipboardEvent, error) {
+func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.ClipboardEvent, error) {
 	if limit <= 0 {
 		return nil, nil
 	}
@@ -19,40 +22,45 @@ func (db *DB) Search(ctx context.Context, query string, limit int) ([]models.Cli
 		return db.GetLast(ctx, int64(limit))
 	}
 
-	if stringContainsAny(query, "*", "AND", "OR", "NOT") {
-		return db.fullTextSearch(ctx, query) // The query contains sqlite search oparator
-	}
-
-	fields := strings.Fields(query)
-	for i, field := range fields {
-		fields[i] = field + "*"
-	}
-
-	// add the *<word>* to make the serach fuzzy
-	return db.fullTextSearch(ctx, strings.Join(fields, " "))
-}
-
-func (db *DB) fullTextSearch(ctx context.Context, query string) ([]models.ClipboardEvent, error) {
 	slog.Info("sqlite full-text search", "query", query)
-	res, err := db.queries.FullTextSearch(ctx, query)
-	if err != nil {
+	previews, err := db.queries.GetEventsPreviewAndID(ctx, int64(limit))
+	if err != nil || len(previews) == 0 {
 		return nil, err
 	}
 
-	ids := make([]int64, len(res))
-	_ = ids[len(res)-1] // no runtime bound check on the loop
-	for i := range res {
-		ids[i] = res[i].ID
+	pattern := []rune(query)
+	slab := util.MakeSlab(100*1024, 2048) // Pre-allocate memory for efficiency
+
+	type scoredEvent struct {
+		id    int64
+		score int
 	}
 
-	return db.GetMany(ctx, ids)
-}
+	var matches []scoredEvent
 
-func stringContainsAny(s string, parts ...string) bool {
-	for i := range parts {
-		if strings.Contains(s, parts[i]) {
-			return true
+	// 2. Iterate and Match
+	for _, event := range previews {
+		// Convert string to fzf's expected Chars type
+		input := util.ToChars([]byte(event.Preview))
+
+		// Run the algorithm
+		// Parameters: caseSensitive, normalize, forward, input, pattern, withPos, slab
+		res, _ := fzfAlgo.FuzzyMatchV2(false, true, true, &input, pattern, false, slab)
+
+		if res.Score > 0 {
+			matches = append(matches, scoredEvent{
+				id:    event.ID,
+				score: res.Score,
+			})
 		}
 	}
-	return false
+
+	slices.SortStableFunc(matches, func(a, b scoredEvent) int { return b.score - a.score })
+
+	resultIDs := make([]int64, len(matches))
+	for i, m := range matches {
+		resultIDs[i] = m.id
+	}
+
+	return db.GetMany(ctx, resultIDs)
 }
