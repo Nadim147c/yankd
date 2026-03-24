@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -9,8 +10,8 @@ func (s *Server) handleEcho(req *msg) *msg {
 	return req
 }
 
-func (c *Client) SendEcho(msg string) (string, error) {
-	resp, err := c.send(commandEcho, []byte(msg))
+func (c *Client) SendEcho(ctx context.Context, msg string) (string, error) {
+	resp, err := c.send(ctx, commandEcho, []byte(msg))
 	return resp.String(), err
 }
 
@@ -20,14 +21,14 @@ func (s *Server) handlePing(*msg) *msg {
 	return msg
 }
 
-func (c *Client) SendPing() (
+func (c *Client) SendPing(ctx context.Context) (
 	oneWayLatency time.Duration,
 	roundTripLatency time.Duration,
 	err error,
 ) {
 	startTime := time.Now()
 
-	resp, err := c.send(commandPing, nil)
+	resp, err := c.send(ctx, commandPing, nil)
 	if err != nil {
 		return 0, 0, err
 	}

@@ -33,6 +33,6 @@ var setCommand = &cobra.Command{
 		}
 
 		ipcClient := ipc.NewClient()
-		return ipcClient.SendSet(id)
+		return ipcClient.SendSet(cmd.Context(), id)
 	},
 }

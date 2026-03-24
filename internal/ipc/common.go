@@ -8,8 +8,8 @@ import (
 )
 
 type (
-	command int8
-	status  int8
+	command uint8
+	status  uint8
 )
 
 const (
@@ -119,6 +119,9 @@ func (m *msg) Decode(r io.Reader) error {
 	m.status = status(st)
 
 	p, err := buf.ReadBytes(0)
+	if err != nil {
+		return err
+	}
 	m.buf, err = encoder.AppendDecode(nil, dropZeroByte(p))
 	return err
 }
@@ -129,7 +132,7 @@ func dropZeroByte(p []byte) []byte {
 
 func (m msg) EncodeBytes() []byte {
 	buf := bytes.NewBuffer(nil)
-	m.Encode(buf)
+	m.Encode(buf) //nolint
 	return buf.Bytes()
 }
 
@@ -146,6 +149,8 @@ func (m msg) Encode(w io.Writer) error {
 		return err
 	}
 
-	writer.WriteByte(0)
+	if err := writer.WriteByte(0); err != nil {
+		return err
+	}
 	return writer.Flush()
 }

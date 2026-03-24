@@ -19,7 +19,7 @@ var daemonPauseCommand = &cobra.Command{
 		client := ipc.NewClient()
 
 		if len(args) == 0 || args[0] == "toggle" {
-			return client.SendPause(ipc.PauseCmdToggle)
+			return client.SendPause(cmd.Context(), ipc.PauseCmdToggle)
 		}
 
 		b, err := strconv.ParseBool(args[0])
@@ -32,6 +32,6 @@ var daemonPauseCommand = &cobra.Command{
 			newState = ipc.PauseCmdTrue
 		}
 
-		return client.SendPause(newState)
+		return client.SendPause(cmd.Context(), newState)
 	},
 }

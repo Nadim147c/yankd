@@ -19,11 +19,11 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 	}
 
 	if strings.TrimSpace(query) == "" {
-		return db.GetLast(ctx, int64(limit))
+		return db.GetLast(ctx, limit)
 	}
 
 	slog.Info("sqlite full-text search", "query", query)
-	previews, err := db.queries.GetEventsPreviewAndID(ctx, int64(limit))
+	previews, err := db.queries.GetEventsPreviewAndID(ctx, limit)
 	if err != nil || len(previews) == 0 {
 		return nil, err
 	}

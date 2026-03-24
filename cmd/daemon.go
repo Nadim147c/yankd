@@ -45,7 +45,7 @@ var daemonCommand = &cobra.Command{
 
 		wg.Go(func() {
 			err := wlClient.Listen(ctx, clips)
-			if err != nil && !errors.Is(context.Canceled, err) {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				slog.Error("failed to start wayland client", "error", err)
 				cancel()
 			}
@@ -53,7 +53,7 @@ var daemonCommand = &cobra.Command{
 
 		wg.Go(func() {
 			err := ipcServer.Listen(ctx)
-			if err != nil && !errors.Is(context.Canceled, err) {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				slog.Error("failed to start ipc client", "error", err)
 				cancel()
 			}

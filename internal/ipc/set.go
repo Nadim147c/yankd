@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,16 +28,16 @@ func (s *Server) handleSet(req *msg) *msg {
 	return new(msg)
 }
 
-func (c *Client) SendSet(id int64) error {
+func (c *Client) SendSet(ctx context.Context, id int64) error {
 	req := new(msg)
 	req.command = commandSet
-	fmt.Fprint(req, id)
-	resp, err := c.sendMsg(req)
+	fmt.Fprint(req, id) //nolint:errcheck // writing small data with buffer
+	resp, err := c.sendMsg(ctx, req)
 	if err != nil {
 		return err
 	}
 	if resp.status != statusOk {
-		fmt.Println(resp.status, resp.String())
+		slog.Error("failed to set clipboard", "error", resp.String())
 		return errors.New(resp.String())
 	}
 	return nil

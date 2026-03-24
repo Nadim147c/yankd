@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -24,14 +25,14 @@ func (s *Server) handlePause(req *msg) *msg {
 	if cmd < PauseCmdToggle {
 		v := s.cb.SetPaused(cmd == PauseCmdTrue)
 		m := new(msg)
-		fmt.Fprint(m, v)
+		fmt.Fprint(m, v) //nolint:errcheck // writing small data with buffer
 		return m
 	}
 
 	if cmd == PauseCmdToggle {
 		v := s.cb.TogglePaused()
 		m := new(msg)
-		fmt.Fprint(m, v)
+		fmt.Fprint(m, v) //nolint:errcheck // writing small data with buffer
 		return m
 	}
 
@@ -42,11 +43,11 @@ func (s *Server) handlePause(req *msg) *msg {
 	return new(msg)
 }
 
-func (c *Client) SendPause(cmd pauseCmd) error {
+func (c *Client) SendPause(ctx context.Context, cmd pauseCmd) error {
 	req := new(msg)
 	req.command = commandPause
-	fmt.Fprint(req, cmd)
-	resp, err := c.sendMsg(req)
+	fmt.Fprint(req, cmd) //nolint:errcheck // writing small data with buffer
+	resp, err := c.sendMsg(ctx, req)
 	if err != nil {
 		return err
 	}

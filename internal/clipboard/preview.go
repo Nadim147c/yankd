@@ -50,14 +50,17 @@ func generatePreivew(entires []models.ClipboardEntry) string {
 	buf := &wordWritter{
 		buf:     bytes.NewBuffer(make([]byte, 0, maxPreviewLength)),
 		written: make(map[string]struct{}),
+		done:    false,
 	}
+
+	const HTMLContent = "text/html"
 
 	sortedEntries := slices.Clone(entires)
 	slices.SortFunc(sortedEntries, func(a, b models.ClipboardEntry) int {
-		if a.MimeType == "text/html" {
+		if a.MimeType == HTMLContent {
 			return 1
 		}
-		if b.MimeType == "text/html" {
+		if b.MimeType == HTMLContent {
 			return -1
 		}
 		return strings.Compare(a.MimeType, b.MimeType)
@@ -68,7 +71,7 @@ func generatePreivew(entires []models.ClipboardEntry) string {
 			continue
 		}
 
-		if entry.MimeType == "text/html" {
+		if entry.MimeType == HTMLContent {
 			m := parseHtml(entry.Blob)
 			for _, tag := range htmlTagsSortScore {
 				if val, ok := m[tag]; ok {

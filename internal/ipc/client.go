@@ -1,6 +1,9 @@
 package ipc
 
-import "net"
+import (
+	"context"
+	"net"
+)
 
 // Client connects to a Unix socket and sends/receives messages.
 type Client struct{}
@@ -9,17 +12,19 @@ func NewClient() *Client {
 	return new(Client)
 }
 
-func (c *Client) send(cmd command, data []byte) (*msg, error) {
+func (c *Client) send(ctx context.Context, cmd command, data []byte) (*msg, error) {
 	var req msg
 	req.command = cmd
 	req.buf = data
-	return c.sendMsg(&req)
+	return c.sendMsg(ctx, &req)
 }
 
-func (c *Client) sendMsg(req *msg) (*msg, error) {
+func (c *Client) sendMsg(ctx context.Context, req *msg) (*msg, error) {
 	socketPath := getSocketPath()
 
-	conn, err := net.Dial("unix", socketPath)
+	var dialer net.Dialer
+
+	conn, err := dialer.DialContext(ctx, "unix", socketPath)
 	if err != nil {
 		return nil, err
 	}

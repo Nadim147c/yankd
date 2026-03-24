@@ -118,7 +118,8 @@ func (s *Server) handleConnection(conn *net.UnixConn) {
 	var resp *msg
 	switch req.command {
 	case commandNull:
-		resp = &msg{status: statusFatal}
+		resp = new(msg)
+		resp.status = statusFatal
 	case commandEcho:
 		resp = s.handleEcho(req)
 	case commandPing:
@@ -134,5 +135,7 @@ func (s *Server) handleConnection(conn *net.UnixConn) {
 		resp.status = statusFatal
 	}
 
-	resp.Encode(conn)
+	if err := resp.Encode(conn); err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
