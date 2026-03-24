@@ -42,7 +42,7 @@ var searchCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 
-		limit := viper.GetInt("limit")
+		limit := viper.GetInt64("limit")
 
 		db, err := db.CreateDB()
 		if err != nil {
@@ -75,15 +75,14 @@ type SimplifedEvent struct {
 }
 
 func formatSimpleJSON(events []models.ClipboardEvent) error {
-	simpleEvents := make([]SimplifedEvent, 0, len(events))
-	for event := range slices.Values(events) {
-		se := SimplifedEvent{
+	simpleEvents := make([]SimplifedEvent, len(events))
+	for i, event := range events {
+		simpleEvents[i] = SimplifedEvent{
 			ID:       event.ID,
 			MimeType: event.PrimaryMimeType,
 			Time:     event.Time,
-			Preview:  getPreview(event.Entries),
+			Preview:  event.Preview,
 		}
-		simpleEvents = append(simpleEvents, se)
 	}
 	return json.NewEncoder(os.Stdout).Encode(simpleEvents)
 }
@@ -92,36 +91,9 @@ func formatJSON(events []models.ClipboardEvent) error {
 	return json.NewEncoder(os.Stdout).Encode(events)
 }
 
-func getPreview(entries []models.ClipboardEntry) string {
-	m := make(map[models.Hash]struct{}, len(entries))
-	uniqueEntries := slices.DeleteFunc(entries, func(e models.ClipboardEntry) bool {
-		if !e.IsText || !e.Text.Valid {
-			return true
-		}
-		if _, ok := m[e.Hash]; ok {
-			return true
-		}
-		m[e.Hash] = struct{}{}
-		return false
-	})
-
-	words := make([]string, 0, len(uniqueEntries))
-	for entry := range slices.Values(uniqueEntries) {
-		split := strings.Fields(entry.Text.String)
-		words = append(words, split...)
-	}
-
-	if len(words) == 0 {
-		return "<unknow clipboard>"
-	}
-
-	return strings.Join(words, " ")
-}
-
 func formatPlain(events []models.ClipboardEvent) error { //nolint:unparam
 	for event := range slices.Values(events) {
-		preview := fmt.Sprintf("%d\t%s\t%s", event.ID, event.PrimaryMimeType, getPreview(event.Entries))
-		_, _ = fmt.Fprintln(os.Stdout, preview)
+		fmt.Fprintln(os.Stdout, event.ID, event.PrimaryMimeType, event.Preview) //nolint:errcheck
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ func TestIpcEcho(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := client.SendEcho(msg)
+	resp, err := client.SendEcho(t.Context(), msg)
 	if err != nil {
 		t.Fatalf("SendEcho failed: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestIpcPing(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	oneWay, roundTrip, err := client.SendPing()
+	oneWay, roundTrip, err := client.SendPing(t.Context())
 	if err != nil {
 		t.Fatalf("SendEcho failed: %v", err)
 	}

@@ -54,7 +54,7 @@ var getCommand = &cobra.Command{
 
 			entry := event.Entries[idx]
 			if entry.IsText {
-				_, err := os.Stdout.WriteString(entry.Text.String)
+				_, err := os.Stdout.Write(entry.Blob)
 				return err
 			}
 

@@ -1,11 +1,11 @@
 -- name: CreateEvent :one
-INSERT INTO events (primary_mime_type, time)
-VALUES (?, ?)
+INSERT INTO events (primary_mime_type, time, preview)
+VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: CreateContent :one
-INSERT INTO contents (hash, is_text, text, blob)
-VALUES (?, ?, ?, ?)
+INSERT INTO contents (hash, is_text, blob)
+VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: CreateEntry :one
@@ -15,11 +15,10 @@ RETURNING *;
 
 -- name: GetEvents :many
 SELECT * FROM events
-WHERE id IN (sqlc.slice('ids'));
+WHERE events.id IN (sqlc.slice('ids'));
 
 -- name: GetLastEvents :many
-SELECT *
-FROM events
+SELECT * FROM events
 ORDER BY time DESC
 LIMIT ?;
 
@@ -43,15 +42,7 @@ SELECT entries.*, contents.* FROM entries
 JOIN contents ON contents.id = entries.content_id
 WHERE entries.event_id IN (sqlc.slice('ids'));
 
--- name: FullTextSearch :many
-WITH matched_contents AS (
-  SELECT text FROM contents_fts
-  WHERE contents_fts.text MATCH ?
-)
-SELECT e.id, MIN(m.rank) AS best_rank
-FROM matched_contents m
-JOIN contents d ON d.id = m.rowid
-JOIN entries en ON en.content_id = d.id
-JOIN events e ON e.id = en.event_id
-GROUP BY e.id
-ORDER BY best_rank;
+-- name: GetEventsPreviewAndID :many
+SELECT id, primary_mime_type, preview FROM events
+ORDER BY time DESC
+LIMIT ?;

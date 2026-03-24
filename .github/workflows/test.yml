@@ -1,0 +1,50 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "**/go.*"
+      - "**/*.go"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          check-latest: true
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run Gofumpt
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          gofumpt -d -e .
+
+      - name: Golangci Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
+
+      - name: Go Test
+        run: |
+          go vet ./...
+          go build ./...
+          go test ./...

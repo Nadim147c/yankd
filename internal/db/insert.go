@@ -28,6 +28,7 @@ func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
 	event, err := queries.CreateEvent(ctx, sqlc.CreateEventParams{
 		PrimaryMimeType: e.PrimaryMimeType,
 		Time:            e.Time,
+		Preview:         e.Preview,
 	})
 	if err != nil {
 		return err
@@ -55,15 +56,13 @@ func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
 
 			// Collision aware insertiong by check the underlying content
 			for dbEntry := range slices.Values(dbDatas) {
-				textMatched := dbEntry.Text.String == entry.Text.String
 				blobMatched := bytes.Equal(dbEntry.Blob, entry.Blob)
-
 				// insert the entry when the underlying content already exists
-				if (dbEntry.IsText && textMatched) || (!dbEntry.IsText && blobMatched) {
+				if (dbEntry.IsText == entry.IsText) && blobMatched {
 					contentID = dbEntry.ID
 					slog.Debug("skipping insertiong",
 						"content_id", contentID,
-						"text_matched", textMatched,
+						"text_matched", dbEntry.IsText == entry.IsText,
 						"blob_matched", blobMatched,
 					)
 					goto insertEntry
@@ -75,7 +74,6 @@ func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
 			content, err := queries.CreateContent(ctx, sqlc.CreateContentParams{
 				Hash:   entry.Hash,
 				IsText: entry.IsText,
-				Text:   entry.Text,
 				Blob:   entry.Blob,
 			})
 			if err != nil {

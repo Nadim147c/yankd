@@ -63,11 +63,7 @@ func (c *Client) SetClipboard(event models.ClipboardEvent) error {
 		if err := src.Offer(entry.MimeType); err != nil {
 			return err
 		}
-		if entry.IsText {
-			m[entry.MimeType] = entry.Text.Bytes()
-		} else {
-			m[entry.MimeType] = entry.Blob
-		}
+		m[entry.MimeType] = entry.Blob
 	}
 
 	// This is so that we can know if the clipboard is set by yankd

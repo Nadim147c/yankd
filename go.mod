@@ -8,12 +8,13 @@ require (
 	github.com/carapace-sh/carapace v1.10.3
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/charmbracelet/log v0.4.2
-	github.com/gabriel-vasile/mimetype v1.4.13
+	github.com/junegunn/fzf v0.70.0
 	github.com/neurlang/wayland v0.3.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/spf13/cast v1.10.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
+	golang.org/x/net v0.42.0
 	modernc.org/sqlite v1.38.2
 )
 

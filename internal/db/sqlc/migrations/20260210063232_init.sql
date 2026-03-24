@@ -3,15 +3,15 @@
 CREATE TABLE events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   primary_mime_type TEXT NOT NULL DEFAULT 'text/plain',
-  time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  preview TEXT NOT NULL
 );
 
 CREATE TABLE contents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  hash UNSIGNED BIGINT NOT NULL,
+  hash BIGINT NOT NULL,
   is_text BOOLEAN NOT NULL DEFAULT 1,
-  text TEXT,
-  blob BLOB
+  blob BLOB NOT NULL
 );
 
 CREATE TABLE entries (
@@ -32,10 +32,8 @@ CREATE INDEX idx_contents_hash ON contents (hash);
 
 -- +goose Down
 -- +goose StatementBegin
-
-DROP TABLE IF EXISTS entries;
 DROP TABLE IF EXISTS contents;
+DROP TABLE IF EXISTS entries;
 DROP TABLE IF EXISTS events;
-
 -- +goose StatementEnd
 

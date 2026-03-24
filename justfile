@@ -50,13 +50,6 @@ generate-sqlc:
 	@echo "Generating code using sqlc!"
 	@sqlc generate
 
-	@echo "Fixing generated code..."
-	@sed -i \
-		-e 's/WHERE contents_fts.text MATCH ?/WHERE contents_fts MATCH ?/' \
-		-e 's/SELECT text FROM contents_fts/SELECT rowid, rank FROM contents_fts/' \
-	  -e 's/BestRank interface{}/BestRank float64/' \
-		internal/db/sqlc/queries.sql.go
-
 	@echo "Formatting generated files..."
 	@gofumpt -w internal/db/sqlc/*.go
 

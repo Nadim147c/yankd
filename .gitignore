@@ -1,7 +1,9 @@
 build
 yankd
+!yankd/**
 Makefile.local
 result
 .direnv/*
 vendor/
 tmp
+example/quickshell/.qmlls.ini

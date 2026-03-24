@@ -11,10 +11,10 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Nadim147c/yankd/internal/models"
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
-	"github.com/gabriel-vasile/mimetype"
 )
 
 type clipboardParser struct {
@@ -49,7 +49,6 @@ func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	defer writer.Close()
 	defer reader.Close()
 
-	// Send receive request
 	if err := c.offer.Receive(mimeType, writer.Fd()); err != nil {
 		reader.Close() //nolint
 		slog.Error("receive request failed", "mime", mimeType, "error", err)
@@ -86,7 +85,13 @@ func selectMime(m []string) (mime string) {
 	return "text/plain"
 }
 
-var imageRegex = regexp.MustCompile(`^(image/.+|.+/ico)$`)
+var badMimes = []*regexp.Regexp{
+	regexp.MustCompile(`text\/_moz_html`),
+	regexp.MustCompile(`ico`),
+	regexp.MustCompile(`BMP|bmp`),
+	regexp.MustCompile(`bitmap`),
+	regexp.MustCompile(`microsoft`),
+}
 
 // parse converts the retrieved data into a Clip struct.
 func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
@@ -100,6 +105,13 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
 	for mime := range slices.Values(c.mimes) {
+		isBadMime := slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
+			return re.MatchString(mime)
+		})
+		if isBadMime {
+			continue
+		}
+
 		v, err := c.retrieveData(mime)
 		if err != nil {
 			return event, err
@@ -109,28 +121,16 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 		}
 
 		hash := models.NewHash(v)
-		mt, _, _ := mimepkg.ParseMediaType(mime)
 
 		var entry models.ClipboardEntry
 		entry.Hash = hash
 		entry.MimeType = mime
-		if imageRegex.MatchString(mt) {
-			entry.Blob = v
-		} else {
-			entry.IsText = true
-			entry.Text = models.NewNullString(string(v), true)
-		}
+		entry.IsText = utf8.Valid(v)
+		entry.Blob = v
 		entries = append(entries, entry)
 	}
 	event.Entries = entries
+	event.Preview = generatePreivew(entries)
 
 	return event, nil
-}
-
-func getExt(b []byte) string {
-	var ext string
-	if mt := mimetype.Detect(b); mt != nil {
-		ext = mt.Extension()
-	}
-	return ext
 }
