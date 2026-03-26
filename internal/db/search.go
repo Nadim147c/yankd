@@ -23,7 +23,7 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 	}
 
 	slog.Info("sqlite full-text search", "query", query)
-	previews, err := db.queries.GetEventsPreviewAndID(ctx, limit)
+	previews, err := db.queries.GetEventsPreviewAndID(ctx, 10000000)
 	if err != nil || len(previews) == 0 {
 		return nil, err
 	}
@@ -56,6 +56,10 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 	}
 
 	slices.SortStableFunc(matches, func(a, b scoredEvent) int { return b.score - a.score })
+
+	if len(matches) > int(limit) {
+		matches = matches[:limit]
+	}
 
 	resultIDs := make([]int64, len(matches))
 	for i, m := range matches {
