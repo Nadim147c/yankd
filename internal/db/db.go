@@ -22,26 +22,16 @@ type DB struct {
 	queries *sqlc.Queries
 }
 
+var internalTestModeDoNotUse = false
+
 // CreateDB creates a new database instance.
 func CreateDB() (*DB, error) {
-	dbDir := viper.GetString("database")
-	if dbDir == "" {
-		slog.Error("database directory is empty")
-		return nil, errors.New("database directory can not be empty")
+	dbPath, err := getDatabasePath()
+	if err != nil {
+		return nil, err
 	}
 
-	slog.Info("databse initialization", "database-dir", dbDir)
-	if err := os.MkdirAll(dbDir, 0o750); err != nil {
-		slog.Error(
-			"failed to create database directory",
-			"path", dbDir,
-			"error", err,
-		)
-		return nil, fmt.Errorf("failed to create database directory: %w", err)
-	}
-	slog.Debug("database directory created", "path", dbDir)
-
-	sqlDB, err := sql.Open("sqlite", filepath.Join(dbDir, "history.db"))
+	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
 		return nil, err
@@ -55,6 +45,30 @@ func CreateDB() (*DB, error) {
 		log.Fatalf("database initialization failed: %v", err)
 	}
 	return db, nil
+}
+
+func getDatabasePath() (string, error) {
+	if internalTestModeDoNotUse {
+		return "file::memory:?cache=shared", nil
+	}
+
+	dbDir := viper.GetString("database")
+	if dbDir == "" {
+		slog.Error("database directory is empty")
+		return "", errors.New("database directory can not be empty")
+	}
+
+	slog.Info("databse initialization", "database-dir", dbDir)
+	if err := os.MkdirAll(dbDir, 0o750); err != nil {
+		slog.Error(
+			"failed to create database directory",
+			"path", dbDir,
+			"error", err,
+		)
+		return "", fmt.Errorf("failed to create database directory: %w", err)
+	}
+	slog.Debug("database directory created", "path", dbDir)
+	return filepath.Join(dbDir, "history.db"), nil
 }
 
 // Close closes the database connection.

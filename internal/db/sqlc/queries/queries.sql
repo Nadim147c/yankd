@@ -46,3 +46,12 @@ WHERE entries.event_id IN (sqlc.slice('ids'));
 SELECT id, primary_mime_type, preview FROM events
 ORDER BY time DESC
 LIMIT ?;
+
+-- name: CountEntries :one
+SELECT COUNT(*) FROM entries;
+
+-- name: CountEvents :one
+SELECT COUNT(*) FROM events;
+
+-- name: CountContents :one
+SELECT COUNT(*) FROM contents;

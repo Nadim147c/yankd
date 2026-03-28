@@ -13,6 +13,48 @@ import (
 	"github.com/Nadim147c/yankd/internal/models"
 )
 
+const countContents = `-- name: CountContents :one
+SELECT COUNT(*) FROM contents
+`
+
+// CountContents
+//
+//	SELECT COUNT(*) FROM contents
+func (q *Queries) CountContents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countContents)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEntries = `-- name: CountEntries :one
+SELECT COUNT(*) FROM entries
+`
+
+// CountEntries
+//
+//	SELECT COUNT(*) FROM entries
+func (q *Queries) CountEntries(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countEntries)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEvents = `-- name: CountEvents :one
+SELECT COUNT(*) FROM events
+`
+
+// CountEvents
+//
+//	SELECT COUNT(*) FROM events
+func (q *Queries) CountEvents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countEvents)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createContent = `-- name: CreateContent :one
 INSERT INTO contents (hash, is_text, blob)
 VALUES (?, ?, ?)
