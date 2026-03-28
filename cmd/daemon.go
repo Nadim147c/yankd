@@ -62,7 +62,7 @@ var daemonCommand = &cobra.Command{
 		wg.Go(func() {
 			for clip := range clips {
 				slog.Debug("Saving content to clipboard history", "mime", clip.PrimaryMimeType)
-				if err := db.Insert(ctx, clip); err != nil {
+				if err := db.Insert(ctx, &clip); err != nil {
 					slog.Error("failed to insert data", "error", err)
 				}
 			}

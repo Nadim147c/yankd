@@ -13,7 +13,7 @@ import (
 )
 
 // Insert inserts a clip to database.
-func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
+func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
 	if len(e.Entries) == 0 {
 		return errors.New("clipboard has no content")
 	}
@@ -33,6 +33,8 @@ func (db *DB) Insert(ctx context.Context, e models.ClipboardEvent) error {
 	if err != nil {
 		return err
 	}
+
+	e.ID = event.ID
 
 	hashes := make(map[models.Hash]int64, len(e.Entries))
 

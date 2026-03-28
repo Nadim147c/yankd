@@ -26,9 +26,11 @@ compile os arch:
       GOARCH="{{ arch }}" \
       go build -trimpath -ldflags '-s -w -X main.Version={{ version }}' -o {{ bin }}
 
+fmt:
+  gofumpt -w .
 generate:
-  generate-sqlc
-  generate-protocol
+  just generate-sqlc
+  just generate-protocol
 
 generate-protocol:
 	@echo "Generating code using wayland-scanner!"

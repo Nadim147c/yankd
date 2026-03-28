@@ -19,5 +19,6 @@ pkgs.mkShell {
     goose
     nushell
     just
+    gotestsum
   ];
 }
