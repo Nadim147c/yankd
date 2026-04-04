@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Nadim147c/yankd/internal/db/sqlc"
 	"github.com/Nadim147c/yankd/internal/models"
 	fzfAlgo "github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
@@ -67,4 +68,14 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 	}
 
 	return db.GetMany(ctx, resultIDs)
+}
+
+// List runs full-text search in database and returns matched items.
+// If query is empty, it returns the latest items instead.
+func (db *DB) List(ctx context.Context, limit int64) ([]sqlc.GetEventsPreviewAndIDRow, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	slog.Info("sqlite full-text search", "limit", limit)
+	return db.queries.GetEventsPreviewAndID(ctx, limit)
 }
