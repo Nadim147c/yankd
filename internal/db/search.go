@@ -7,20 +7,19 @@ import (
 	"strings"
 
 	"github.com/Nadim147c/yankd/internal/db/sqlc"
-	"github.com/Nadim147c/yankd/internal/models"
 	fzfAlgo "github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
 )
 
 // Search runs full-text search in database and returns matched items.
 // If query is empty, it returns the latest items instead.
-func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.ClipboardEvent, error) {
+func (db *DB) Search(ctx context.Context, query string, limit int64) ([]sqlc.GetEventsPreviewAndIDRow, error) {
 	if limit <= 0 {
 		return nil, nil
 	}
 
 	if strings.TrimSpace(query) == "" {
-		return db.GetLast(ctx, limit)
+		return db.queries.GetEventsPreviewAndID(ctx, limit)
 	}
 
 	slog.Info("sqlite full-text search", "query", query)
@@ -33,8 +32,8 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 	slab := util.MakeSlab(100*1024, 2048) // Pre-allocate memory for efficiency
 
 	type scoredEvent struct {
-		id    int64
-		score int
+		score   int
+		preview sqlc.GetEventsPreviewAndIDRow
 	}
 
 	var matches []scoredEvent
@@ -49,25 +48,22 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]models.C
 		res, _ := fzfAlgo.FuzzyMatchV2(false, true, true, &input, pattern, false, slab)
 
 		if res.Score > 0 {
-			matches = append(matches, scoredEvent{
-				id:    event.ID,
-				score: res.Score,
-			})
+			matches = append(matches, scoredEvent{res.Score, event})
 		}
 	}
 
-	slices.SortStableFunc(matches, func(a, b scoredEvent) int { return b.score - a.score })
+	slices.SortStableFunc(matches, func(a, b scoredEvent) int {
+		return b.score - a.score
+	})
 
-	if len(matches) > int(limit) {
-		matches = matches[:limit]
+	size := min(len(matches), int(limit))
+
+	for i, m := range matches[:size] {
+		previews[i] = m.preview
 	}
 
-	resultIDs := make([]int64, len(matches))
-	for i, m := range matches {
-		resultIDs[i] = m.id
-	}
-
-	return db.GetMany(ctx, resultIDs)
+	// use already allocated preview slice
+	return previews[:size], nil
 }
 
 // List runs full-text search in database and returns matched items.
