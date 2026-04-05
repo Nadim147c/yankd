@@ -2,14 +2,10 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"slices"
 	"strings"
-	"time"
 
 	"github.com/Nadim147c/yankd/internal/db"
-	"github.com/Nadim147c/yankd/internal/models"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -58,42 +54,9 @@ var searchCommand = &cobra.Command{
 
 		switch viper.GetString("format") {
 		case "json":
-			return formatJSON(events)
-		case "short-json":
-			return formatSimpleJSON(events)
+			return json.NewEncoder(os.Stdout).Encode(events)
 		default:
-			return formatPlain(events)
+			return formatPlainPreview(events)
 		}
 	},
-}
-
-type SimplifedEvent struct {
-	ID       int64     `json:"id"`
-	MimeType string    `json:"mime_type"`
-	Time     time.Time `json:"time"`
-	Preview  string    `json:"preview"`
-}
-
-func formatSimpleJSON(events []models.ClipboardEvent) error {
-	simpleEvents := make([]SimplifedEvent, len(events))
-	for i, event := range events {
-		simpleEvents[i] = SimplifedEvent{
-			ID:       event.ID,
-			MimeType: event.PrimaryMimeType,
-			Time:     event.Time,
-			Preview:  event.Preview,
-		}
-	}
-	return json.NewEncoder(os.Stdout).Encode(simpleEvents)
-}
-
-func formatJSON(events []models.ClipboardEvent) error {
-	return json.NewEncoder(os.Stdout).Encode(events)
-}
-
-func formatPlain(events []models.ClipboardEvent) error { //nolint:unparam
-	for event := range slices.Values(events) {
-		fmt.Fprintln(os.Stdout, event.ID, event.PrimaryMimeType, event.Preview) //nolint:errcheck
-	}
-	return nil
 }
