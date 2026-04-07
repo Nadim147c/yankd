@@ -44,7 +44,7 @@ func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataContr
 
 	if err := wlclient.DisplayRoundtrip(c.display); err != nil {
 		if !c.closed.Load() {
-			slog.Error("registry roundtrip failed", "error", err, "closed-attempt", c.closed.Load())
+			slog.Error("registry roundtrip failed", "error", err)
 		}
 		return
 	}
@@ -123,9 +123,9 @@ func (c *Client) Listen(ctx context.Context, events chan<- models.ClipboardEvent
 		slog.Error("failed to connect to wayland display", "error", err)
 		return err
 	}
-	defer display.Context().Close()
-
 	c.display = display
+	defer c.Close()
+
 	slog.Debug("connected to wayland display")
 
 	registry, err := display.GetRegistry()
@@ -133,7 +133,7 @@ func (c *Client) Listen(ctx context.Context, events chan<- models.ClipboardEvent
 		slog.Error("failed to get registry", "error", err)
 		return err
 	}
-	defer registry.Context().Close()
+
 	c.registry = registry
 	slog.Debug("got wayland registry")
 
@@ -195,11 +195,7 @@ func (c *Client) Listen(ctx context.Context, events chan<- models.ClipboardEvent
 
 	slog.Info("clipboard watch initialized, listening for changes")
 
-	go func() {
-		<-ctx.Done()
-		slog.Info("context cancelled → attempting clean close")
-		_ = c.Close()
-	}()
+	context.AfterFunc(ctx, func() { c.Close() }) //nolint
 
 	for {
 		select {
@@ -208,7 +204,7 @@ func (c *Client) Listen(ctx context.Context, events chan<- models.ClipboardEvent
 			return ctx.Err()
 		default:
 			err := wlclient.DisplayDispatch(display)
-			if err != nil && !c.closed.Load() {
+			if err != nil {
 				slog.Error("dispatch failed", "error", err)
 				return fmt.Errorf("dispatch failed: %w", err)
 			}
