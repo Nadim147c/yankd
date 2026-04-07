@@ -61,6 +61,9 @@ func (c *Client) TogglePaused() bool {
 
 // Close closes the underlying socket connection.
 func (c *Client) Close() error {
-	c.closed.Store(true)
-	return c.display.Context().Close()
+	var err error
+	if c.closed.CompareAndSwap(false, true) {
+		err = c.display.Context().Close()
+	}
+	return err
 }
