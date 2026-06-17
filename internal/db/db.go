@@ -2,24 +2,25 @@ package db
 
 import (
 	"database/sql"
-	"embed"
+	_ "embed"
 	"errors"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/Nadim147c/yankd/internal/db/sqlc"
-	"github.com/pressly/goose/v3"
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/spf13/viper"
-	_ "modernc.org/sqlite"
 )
 
 // DB is the database instance.
 type DB struct {
 	sql     *sql.DB
 	queries *sqlc.Queries
+	mu      sync.Mutex
 }
 
 var internalTestModeDoNotUse = false
@@ -31,7 +32,7 @@ func CreateDB() (*DB, error) {
 		return nil, err
 	}
 
-	sqlDB, err := sql.Open("sqlite", dbPath)
+	sqlDB, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
 		return nil, err
@@ -68,7 +69,7 @@ func getDatabasePath() (string, error) {
 		return "", fmt.Errorf("failed to create database directory: %w", err)
 	}
 	slog.Debug("database directory created", "path", dbDir)
-	return filepath.Join(dbDir, "history.db"), nil
+	return filepath.Join(dbDir, "history-duckdb.db"), nil
 }
 
 // Close closes the database connection.
@@ -76,26 +77,15 @@ func (db *DB) Close() error {
 	return db.sql.Close()
 }
 
-//go:embed sqlc/migrations/*.sql
-var embedMigrations embed.FS
-
 //go:embed configure.sql
 var configureQuery string
 
 // initialize initializes the database connection and full-text search.
 func (db *DB) initialize() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	if _, err := db.sql.Exec(configureQuery); err != nil { //nolint:noctx
 		return err
 	}
-
-	goose.SetBaseFS(embedMigrations)
-	if err := goose.SetDialect(string(goose.DialectSQLite3)); err != nil {
-		return err
-	}
-
-	if err := goose.Up(db.sql, "sqlc/migrations"); err != nil {
-		return err
-	}
-
 	return nil
 }

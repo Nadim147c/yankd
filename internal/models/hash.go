@@ -4,19 +4,20 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding"
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"math/big"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/zeebo/xxh3"
 )
 
 // Hash is the xxhash sum of clipboard content.
 //
-// It implements driver.Valuer to map uint64 to SQLite's signed int64, allowing
-// the full 64-bit hash to be stored.
-type Hash uint64
+// Hash scans and values as DuckDB's UHUGEINT (unsigned 128 bit integer).
+type Hash [16]byte
 
 type hashConstraints interface {
 	encoding.TextMarshaler
@@ -24,8 +25,8 @@ type hashConstraints interface {
 	sql.Scanner
 	driver.Valuer
 	fmt.Stringer
-	Int() int64
-	Uint() uint64
+	Uint128() xxh3.Uint128
+	BigInt() *big.Int
 	Bytes() []byte
 }
 
@@ -34,38 +35,44 @@ var _ hashConstraints = (*Hash)(nil)
 
 // NewHash return xxhash for given data.
 func NewHash(b []byte) Hash {
-	return Hash(xxhash.Sum64(b))
+	return Hash(xxh3.Hash128(b).Bytes())
 }
 
 // String implements the [Stringer] interface.
 func (h Hash) String() string {
-	return strconv.FormatUint(h.Uint(), 16)
+	return base64.RawStdEncoding.EncodeToString(h[:])
 }
 
 // Bytes returns BigEndian representation hash bits.
 func (h Hash) Bytes() []byte {
-	var b [8]byte
-	binary.BigEndian.PutUint64(b[:], h.Uint())
-	return b[:]
+	return h[:]
 }
 
-// Int retruns int64 representation of hash bits.
-func (h Hash) Int() int64 {
-	return int64(h) //nolint:gosec
+// Bytes returns BigEndian representation hash bits.
+func (h Hash) Uint128() (v xxh3.Uint128) {
+	v.Hi = binary.BigEndian.Uint64(h[:8])
+	v.Lo = binary.BigEndian.Uint64(h[8:16])
+	return v
 }
 
-// Uint retruns uint64 representation of hash bits.
-func (h Hash) Uint() uint64 {
-	return uint64(h)
+// Bytes returns BigEndian representation hash bits.
+func (h Hash) BigInt() *big.Int {
+	hi := binary.BigEndian.Uint64(h[:8])
+	lo := binary.BigEndian.Uint64(h[8:16])
+
+	bigHi := new(big.Int).SetUint64(hi)
+	bigHi.Lsh(bigHi, 64)
+
+	bigLo := new(big.Int).SetUint64(lo)
+	return new(big.Int).Or(bigHi, bigLo)
 }
 
 // Scan implements the [sql.Scanner] interface.
 func (h *Hash) Scan(v any) error {
 	switch v := v.(type) {
-	case int64:
-		//nolint:gosec
-		*h = Hash(v)
-	case uint64:
+	case *big.Int:
+		*h = Hash(v.Bytes())
+	case []byte:
 		*h = Hash(v)
 	default:
 		return errors.New("invalid error type")
@@ -74,21 +81,26 @@ func (h *Hash) Scan(v any) error {
 }
 
 // Value implements the [driver.Valuer] interface.
-func (n Hash) Value() (driver.Value, error) {
-	return n.Int(), nil // SQLITE only supports signed 64bit integers!
+func (h Hash) Value() (driver.Value, error) {
+	return h.BigInt(), nil
 }
 
 // MarshalText implements [encoding.TextMarshaler] interface.
 func (h Hash) MarshalText() (text []byte, err error) {
-	return []byte(h.String()), nil
+	return json.Marshal(h.String())
 }
 
 // UnmarshalText implements [encoding.TextUnmarshaler] interface.
 func (h *Hash) UnmarshalText(text []byte) error {
-	v, err := strconv.ParseUint(string(text), 16, 64)
+	var s string
+	err := json.Unmarshal(text, &s)
 	if err != nil {
 		return err
 	}
-	*h = Hash(v)
+	b, err := base64.RawStdEncoding.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	*h = Hash(b)
 	return nil
 }

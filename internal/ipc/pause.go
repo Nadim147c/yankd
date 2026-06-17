@@ -2,58 +2,55 @@ package ipc
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"log/slog"
+	"net/http"
+
+	"github.com/spf13/cast"
 )
 
-type pauseCmd uint
+type pauseState int
 
 const (
-	PauseCmdFalse pauseCmd = iota
-	PauseCmdTrue
-	PauseCmdToggle
+	PauseFalse pauseState = iota - 1
+	PauseToggle
+	PauseTrue
 )
 
-func (s *Server) handlePause(req *msg) *msg {
-	var cmd pauseCmd
-	_, err := fmt.Fscanf(req, "%d", &cmd)
+func SetPause(ctx context.Context, state pauseState) (bool, error) {
+	c := NewClient()
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/pause/%d", BaseURL, state), nil)
 	if err != nil {
-		return newErrMsg(err)
+		return false, err
 	}
 
-	if cmd < PauseCmdToggle {
-		v := s.cb.SetPaused(cmd == PauseCmdTrue)
-		m := new(msg)
-		fmt.Fprint(m, v) //nolint:errcheck // writing small data with buffer
-		return m
+	resp, err := c.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, extractError(resp)
 	}
 
-	if cmd == PauseCmdToggle {
-		v := s.cb.TogglePaused()
-		m := new(msg)
-		fmt.Fprint(m, v) //nolint:errcheck // writing small data with buffer
-		return m
-	}
+	var newState bool
 
-	var m msg
-	m.status = statusErr
-	m.SetString("invalid command")
+	err = json.NewDecoder(resp.Body).Decode(&newState)
 
-	return new(msg)
+	return newState, err
 }
 
-func (c *Client) SendPause(ctx context.Context, cmd pauseCmd) error {
-	req := new(msg)
-	req.command = commandPause
-	fmt.Fprint(req, cmd) //nolint:errcheck // writing small data with buffer
-	resp, err := c.sendMsg(ctx, req)
-	if err != nil {
-		return err
-	}
-	if resp.status != statusOk {
-		return errors.New(resp.String())
-	}
-	slog.Info("history pause state has changed", "is_paused", resp.String())
-	return nil
+func (s *Server) PauseHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state := pauseState(cast.ToInt(r.PathValue("state")))
+		if state == PauseToggle {
+			v := s.cb.TogglePaused()
+			renderJSON(w, v)
+			return
+		}
+
+		v := s.cb.SetPaused(state == PauseTrue)
+		renderJSON(w, v)
+	})
 }

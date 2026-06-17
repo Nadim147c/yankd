@@ -101,7 +101,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 	event.Time = time.Now()
 
 	// Set MIME type
-	event.PrimaryMimeType = selectMime(c.mimes)
+	event.MimeType = selectMime(c.mimes)
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
 	for mime := range slices.Values(c.mimes) {

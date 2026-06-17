@@ -11,7 +11,7 @@ func TestIpcEcho(t *testing.T) {
 	server := NewServer(nil, nil)
 	go server.Listen(t.Context())
 
-	client := NewClient()
+	client := newClient()
 	msg := "hello world"
 
 	time.Sleep(100 * time.Millisecond)
@@ -31,7 +31,7 @@ func TestIpcPing(t *testing.T) {
 	server := NewServer(nil, nil)
 	go server.Listen(t.Context())
 
-	client := NewClient()
+	client := newClient()
 
 	time.Sleep(100 * time.Millisecond)
 

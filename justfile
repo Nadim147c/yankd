@@ -26,8 +26,12 @@ compile os arch:
       GOARCH="{{ arch }}" \
       go build -trimpath -ldflags '-s -w -X main.Version={{ version }}' -o {{ bin }}
 
+watch:
+  watchexec -e go -r --stop-signal 15 -- go run . daemon -vv
+
 fmt:
   gofumpt -w .
+
 generate:
   just generate-sqlc
   just generate-protocol

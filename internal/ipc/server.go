@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
+	"time"
 
 	"github.com/Nadim147c/yankd/internal/clipboard"
 	"github.com/Nadim147c/yankd/internal/db"
 )
 
 const (
-	MaxBufferSize = 100 * 1024 * 1024
-	SocketName    = "yankd.sock" // default socket file name
+	BaseURL    = "http://unix"
+	SocketName = "yankd.sock" // default socket file name
 )
 
 var internalSocketPathOnlyForTesting string
@@ -75,67 +75,35 @@ func (s *Server) Listen(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	// Channel to signal when accept loop should stop
-	done := make(chan struct{})
+	mux := http.NewServeMux()
+	mux.Handle("POST /echo", s.EchoHandler())
+	mux.Handle("GET /search", s.SearchHandler())
+	mux.Handle("GET /pause/{state}", s.PauseHandler())
+	mux.Handle("GET /get/{id}", s.GetEventHandler())
+	mux.Handle("POST /get", s.GetManyEventsHandler())
+
+	httpServer := &http.Server{Handler: mux}
+
+	serverError := make(chan error, 1)
+
 	go func() {
-		<-ctx.Done()
-		_ = listener.Close() // this will break the Accept loop
-		close(done)
+		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverError <- fmt.Errorf("http server error: %w", err)
+		}
+		close(serverError)
 	}()
 
-	var wg sync.WaitGroup
+	select {
+	case <-ctx.Done():
+		// Context was cancelled, gracefully shut down the server
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-	slog.Info("ipc server is listening for connection")
-	for {
-		conn, err := listener.AcceptUnix()
-		if err != nil {
-			// If the listener was closed due to context cancellation, return nil
-			// (normal shutdown)
-			select {
-			case <-ctx.Done():
-				wg.Wait()
-				return nil
-			default:
-				return fmt.Errorf("accept error: %w", err)
-			}
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("failed to gracefully shutdown: %w", err)
 		}
-
-		// Handle each connection concurrently
-		wg.Go(func() { s.handleConnection(conn) })
-	}
-}
-
-// handleConnection reads messages from a single connection and responds.
-func (s *Server) handleConnection(conn *net.UnixConn) {
-	defer conn.Close()
-
-	req := new(msg)
-	if err := req.Decode(conn); err != nil {
-		slog.Error("failed to decode request", "error", err)
-		return
-	}
-
-	var resp *msg
-	switch req.command {
-	case commandNull:
-		resp = new(msg)
-		resp.status = statusFatal
-	case commandEcho:
-		resp = s.handleEcho(req)
-	case commandPing:
-		resp = s.handlePing(req)
-	case commandSet:
-		resp = s.handleSet(req)
-	case commandPause:
-		resp = s.handlePause(req)
-	}
-
-	if resp == nil {
-		resp = new(msg)
-		resp.status = statusFatal
-	}
-
-	if err := resp.Encode(conn); err != nil {
-		slog.Error("failed to encode response", "error", err)
+		return ctx.Err() // returns context.Canceled
+	case err := <-serverError:
+		return err
 	}
 }

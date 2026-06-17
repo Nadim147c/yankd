@@ -13,7 +13,8 @@ pkgs.mkShell {
     gopls
     golangci-lint-langserver
     sql-formatter
-    sqlite
+    watchexec
+    duckdb
     sqlc
     sqlcheck
     goose
