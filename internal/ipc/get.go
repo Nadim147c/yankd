@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 
 func GetEvent(ctx context.Context, id uuid.UUID) (e models.ClipboardEvent, err error) {
 	c := NewClient()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/get/%s", BaseURL, id.String()), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/get/%s", BaseURL, id.String()), nil)
 	if err != nil {
 		return e, err
 	}
@@ -27,9 +28,8 @@ func GetEvent(ctx context.Context, id uuid.UUID) (e models.ClipboardEvent, err e
 		return e, extractError(resp)
 	}
 
-	var res models.ClipboardEvent
-	err = json.NewDecoder(resp.Body).Decode(&res)
-	return res, err
+	err = json.NewDecoder(resp.Body).Decode(&e)
+	return e, err
 }
 
 func (s *Server) GetEventHandler() http.Handler {
@@ -50,8 +50,10 @@ func (s *Server) GetEventHandler() http.Handler {
 }
 
 func GetManyEvents(ctx context.Context, ids ...uuid.UUID) (e []models.ClipboardEvent, err error) {
+	buf := bytes.NewBuffer(nil)
+	json.NewEncoder(buf).Encode(ids)
 	c := NewClient()
-	req, err := http.NewRequest(http.MethodPost, BaseURL+"/get", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL+"/get", buf)
 	if err != nil {
 		return e, err
 	}
@@ -67,9 +69,8 @@ func GetManyEvents(ctx context.Context, ids ...uuid.UUID) (e []models.ClipboardE
 		return e, extractError(resp)
 	}
 
-	var res []models.ClipboardEvent
-	err = json.NewDecoder(resp.Body).Decode(&res)
-	return res, err
+	err = json.NewDecoder(resp.Body).Decode(&e)
+	return e, err
 }
 
 func (s *Server) GetManyEventsHandler() http.Handler {

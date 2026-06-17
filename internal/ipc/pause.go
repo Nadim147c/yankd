@@ -19,7 +19,7 @@ const (
 
 func SetPause(ctx context.Context, state pauseState) (bool, error) {
 	c := NewClient()
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/pause/%d", BaseURL, state), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/pause/%d", BaseURL, state), nil)
 	if err != nil {
 		return false, err
 	}

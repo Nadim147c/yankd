@@ -10,7 +10,7 @@ import (
 
 func SendEcho(ctx context.Context, msg string) (string, error) {
 	c := NewClient()
-	req, err := http.NewRequest(http.MethodPost, BaseURL+"/echo", strings.NewReader(msg))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL+"/echo", strings.NewReader(msg))
 	if err != nil {
 		return "", err
 	}

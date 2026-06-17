@@ -81,6 +81,7 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux.Handle("GET /pause/{state}", s.PauseHandler())
 	mux.Handle("GET /get/{id}", s.GetEventHandler())
 	mux.Handle("POST /get", s.GetManyEventsHandler())
+	mux.Handle("POST /delete", s.DeteteEventsHandler())
 
 	httpServer := &http.Server{Handler: mux}
 
