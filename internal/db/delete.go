@@ -83,14 +83,20 @@ func (db *DB) Wipe(ctx context.Context) (int64, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	const optimize = `
-    DELETE FROM events;
-    DELETE FROM entries;
-    DELETE FROM contents;
-  `
-	res, err := db.sql.ExecContext(ctx, optimize)
+	tx, err := db.sql.Begin()
 	if err != nil {
 		return 0, err
 	}
-	return res.RowsAffected()
+	defer tx.Rollback()
+	n, err := execBatch(
+		ctx, tx,
+		`DROP TABLE events;`,
+		`DROP TABLE entries;`,
+		`DROP TABLE contents;`,
+		configureQuery,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return n, tx.Commit()
 }
