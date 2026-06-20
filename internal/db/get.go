@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/Nadim147c/yankd/internal/models"
@@ -131,13 +130,13 @@ func (db *DB) GetMany(ctx context.Context, ids ...uuid.UUID) ([]models.Clipboard
 
 	// group entries by event_id
 	entryMap := make(map[uuid.UUID][]models.ClipboardEntry)
-	for en := range slices.Values(entries) {
-		entryMap[en.EventID] = append(entryMap[en.EventID], en.ClipboardEntry)
+	for _, entry := range entries {
+		entryMap[entry.EventID] = append(entryMap[entry.EventID], entry.ClipboardEntry)
 	}
 
 	eventMap := make(map[uuid.UUID]models.ClipboardEvent)
-	for _, ev := range events {
-		eventMap[ev.ID] = ev
+	for _, event := range events {
+		eventMap[event.ID] = event
 	}
 
 	result := make([]models.ClipboardEvent, 0, len(ids))

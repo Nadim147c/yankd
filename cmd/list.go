@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/Nadim147c/yankd/internal/db"
 	"github.com/Nadim147c/yankd/internal/ipc"
@@ -52,7 +51,7 @@ var listCommand = &cobra.Command{
 }
 
 func formatPlainPreview(events []db.SearchResult) error { //nolint:unparam
-	for event := range slices.Values(events) {
+	for _, event := range events {
 		fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", event.ID, event.MimeType, event.Preview) //nolint:errcheck
 	}
 	return nil

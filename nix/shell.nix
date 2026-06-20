@@ -15,10 +15,6 @@ pkgs.mkShell {
     sql-formatter
     watchexec
     duckdb
-    sqlc
-    sqlcheck
-    goose
-    nushell
     just
     gotestsum
   ];

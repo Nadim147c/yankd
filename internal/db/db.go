@@ -11,16 +11,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/Nadim147c/yankd/internal/db/sqlc"
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/spf13/viper"
 )
 
 // DB is the database instance.
 type DB struct {
-	sql     *sql.DB
-	queries *sqlc.Queries
-	mu      sync.Mutex
+	sql *sql.DB
+	mu  sync.Mutex
 }
 
 var internalTestModeDoNotUse = false
@@ -41,7 +39,6 @@ func CreateDB() (*DB, error) {
 	slog.Info("database connected successfully")
 	db := new(DB)
 	db.sql = sqlDB
-	db.queries = sqlc.New(sqlDB)
 	if err := db.initialize(); err != nil {
 		log.Fatalf("database initialization failed: %v", err)
 	}

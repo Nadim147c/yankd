@@ -6,13 +6,14 @@ require (
 	github.com/Nadim147c/fang v0.5.0-fork
 	github.com/adrg/xdg v0.5.3
 	github.com/carapace-sh/carapace v1.10.3
-	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/duckdb/duckdb-go/v2 v2.10503.1
 	github.com/google/uuid v1.6.0
 	github.com/neurlang/wayland v0.3.0
+	github.com/spf13/cast v1.10.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
+	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/net v0.49.0
 )
 
@@ -60,12 +61,10 @@ require (
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
-	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yalue/native_endian v1.0.2 // indirect
-	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/mod v0.32.0 // indirect

@@ -74,7 +74,7 @@ func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 // with valid file extensions. Fallback: text/plain + ".txt".
 func selectMime(m []string) (mime string) {
 	// First pass: look for image/*
-	for mt := range slices.Values(m) {
+	for _, mt := range m {
 		mtype, _, _ := mimepkg.ParseMediaType(mt)
 		if strings.HasPrefix(mtype, "image/") {
 			return mt
@@ -104,7 +104,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 	event.MimeType = selectMime(c.mimes)
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
-	for mime := range slices.Values(c.mimes) {
+	for _, mime := range c.mimes {
 		isBadMime := slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
 			return re.MatchString(mime)
 		})

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"github.com/Nadim147c/yankd/internal/models"
 	"github.com/google/uuid"
@@ -80,7 +79,7 @@ func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
 
 	hashes := make(map[models.Hash]uuid.UUID, len(e.Entries))
 
-	for entry := range slices.Values(e.Entries) {
+	for _, entry := range e.Entries {
 		var contentID uuid.UUID
 
 		// It's highly unlikely that there will be different content with same hash
@@ -99,7 +98,7 @@ func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
 			slog.Debug("existing database contents", "count", len(dbContents))
 
 			// Collision aware insertiong by check the underlying content
-			for dbEntry := range slices.Values(dbContents) {
+			for _, dbEntry := range dbContents {
 				textMatch := dbEntry.IsText == entry.IsText
 				blobMatched := bytes.Equal(dbEntry.Blob, entry.Blob)
 				// insert the entry when the underlying content already exists
