@@ -85,7 +85,10 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux.Handle("POST /set/{id}", s.SetEventHandler())
 	mux.Handle("POST /wipe", s.WipeDatabaseHandler())
 
-	httpServer := &http.Server{Handler: mux}
+	httpServer := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 
 	serverError := make(chan error, 1)
 

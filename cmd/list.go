@@ -50,7 +50,7 @@ var listCommand = &cobra.Command{
 	},
 }
 
-func formatPlainPreview(events []db.SearchResult) error { //nolint:unparam
+func formatPlainPreview(events []db.SearchResult) error {
 	for _, event := range events {
 		fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", event.ID, event.MimeType, event.Preview) //nolint:errcheck
 	}

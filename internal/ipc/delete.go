@@ -12,7 +12,7 @@ import (
 
 func DeteteEvents(ctx context.Context, ids ...uuid.UUID) (n int64, err error) {
 	buf := bytes.NewBuffer(nil)
-	json.NewEncoder(buf).Encode(ids)
+	_ = json.NewEncoder(buf).Encode(ids)
 	c := NewClient()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL+"/delete", buf)
 	if err != nil {

@@ -1,28 +1,18 @@
-name: Build, Test & Lint
-
+name: Nix Flack Check and Build
 on:
+  pull_request:
   push:
     branches:
       - main
-      - master
-    paths:
-      - "**/go.*"
-      - "**/*.go"
-      - ".github/workflows/*"
-      - ".github/actions/*"
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pull-requests: read
 
 jobs:
-  build:
+  nix-builds:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -31,90 +21,11 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Download dependencies
-        run: go mod download
+      - name: Go Mod Tidy
+        run: go mod tidy
 
-      - name: Go Build
-        run: go build ./...
+      - name: Nix Flake Check
+        run: nix run nixpkgs#nix-fast-build -- --no-nom --skip-cache -f .#checks.x86_64-linux
 
-  tidy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          check-latest: true
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Go Tidy
-        run: |
-          go mod tidy
-          git diff --exit-code
-
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          check-latest: true
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Run Gofumpt
-        run: |
-          go install mvdan.cc/gofumpt@latest
-          gofumpt -d -e .
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          check-latest: true
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Golangci Lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.6
-
-      - name: Go Vet
-        run: go vet ./...
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          check-latest: true
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Go Test
-        run: go test ./...
+      - name: Nix Build
+        run: nix run nixpkgs#nix-fast-build -- --no-nom --skip-cache -f .#packages.x86_64-linux

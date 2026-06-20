@@ -47,7 +47,7 @@ func CreateDB() (*DB, error) {
 
 func getDatabasePath() (string, error) {
 	if internalTestModeDoNotUse {
-		return "file::memory:?cache=shared", nil
+		return ":memory:", nil
 	}
 
 	dbDir := viper.GetString("database")

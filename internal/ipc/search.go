@@ -13,7 +13,7 @@ import (
 
 func GetSearch(ctx context.Context, query string, limit int64) ([]db.SearchResult, error) {
 	c := NewClient()
-	req, err := http.NewRequest(http.MethodGet, BaseURL+"/search", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL+"/search", nil)
 	if err != nil {
 		return nil, err
 	}

@@ -1,12 +1,13 @@
 {
+  gomod2nix,
   pkgs ? import <nixpkgs> { },
 }:
 pkgs.mkShell {
   name = "yankd";
-  # Get dependencies from the main package
-  inputsFrom = [ (pkgs.callPackage ./package.nix { }) ];
   # Additional tooling
   buildInputs = with pkgs; [
+    gomod2nix
+    nix-fast-build
     go
     gofumpt
     golines

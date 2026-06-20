@@ -51,7 +51,7 @@ func (s *Server) GetEventHandler() http.Handler {
 
 func GetManyEvents(ctx context.Context, ids ...uuid.UUID) (e []models.ClipboardEvent, err error) {
 	buf := bytes.NewBuffer(nil)
-	json.NewEncoder(buf).Encode(ids)
+	_ = json.NewEncoder(buf).Encode(ids)
 	c := NewClient()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL+"/get", buf)
 	if err != nil {

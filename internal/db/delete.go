@@ -12,7 +12,7 @@ import (
 func (db *DB) Delete(ctx context.Context, ids ...uuid.UUID) (int64, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	tx, err := db.sql.Begin()
+	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -83,7 +83,7 @@ func (db *DB) Wipe(ctx context.Context) (int64, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	tx, err := db.sql.Begin()
+	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}

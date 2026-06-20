@@ -27,6 +27,12 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchRe
 	if limit <= 0 {
 		return nil, nil
 	}
+	if query == "" {
+		db.mu.Unlock()
+		res, err := db.List(ctx, limit)
+		db.mu.Lock()
+		return res, err
+	}
 
 	if hasUpdatedIndex.CompareAndSwap(false, true) {
 		slog.Debug("dropping the full-text search index")

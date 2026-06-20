@@ -11,8 +11,8 @@ type Client struct{}
 
 func NewClient() *http.Client {
 	socket := getSocketPath()
-	return &http.Client{
-		Transport: &http.Transport{
+	return &http.Client{ //nolint:exhaustruct
+		Transport: &http.Transport{ //nolint:exhaustruct
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				var d net.Dialer
 				return d.DialContext(ctx, "unix", socket)
