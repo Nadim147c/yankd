@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Nadim147c/yankd/internal/models"
+	"github.com/google/uuid"
 )
 
 func TestDB_Get(t *testing.T) {
@@ -22,8 +23,8 @@ func TestDB_Get(t *testing.T) {
 			if first.ID != data[i].ID {
 				t.Fatalf("expected %d, got %d", data[i].ID, first.ID)
 			}
-			if first.PrimaryMimeType != data[i].PrimaryMimeType {
-				t.Fatalf("expected %s, got %s", data[i].PrimaryMimeType, first.PrimaryMimeType)
+			if first.MimeType != data[i].MimeType {
+				t.Fatalf("expected %s, got %s", data[i].MimeType, first.MimeType)
 			}
 			if first.Preview != data[i].Preview {
 				t.Fatalf("expected %s, got %s", data[i].Preview, first.Preview)
@@ -49,18 +50,18 @@ func TestDB_Get(t *testing.T) {
 	}
 }
 
-func TestDB_GetLast(t *testing.T) {
+func TestDB_List(t *testing.T) {
 	db := setupTestDB(t)
 	data := insertRandomTestData(t, db)
 
-	n := len(data) - 1
+	n := int64(len(data) - 1)
 	t.Logf("requesting last %d events", n)
 
-	last, err := db.GetLast(t.Context(), int64(n))
+	last, err := db.List(t.Context(), n)
 	if err != nil {
 		t.Fatalf("failed to get last events: %v", err)
 	}
-	if len(last) != n {
+	if len(last) != int(n) {
 		t.Log(last)
 		t.Fatalf("expected %d, got %d", n, len(last))
 	}
@@ -70,10 +71,10 @@ func TestDB_GetMany(t *testing.T) {
 	db := setupTestDB(t)
 	data := insertRandomTestData(t, db)
 
-	ids := []int64{data[0].ID, getLastItem(t, data).ID}
+	ids := []uuid.UUID{data[0].ID, getLastItem(t, data).ID}
 	t.Logf("requesting events with ids %v", ids)
 
-	events, err := db.GetMany(t.Context(), ids)
+	events, err := db.GetMany(t.Context(), ids...)
 	if err != nil {
 		t.Fatalf("failed to get last events: %v", err)
 	}

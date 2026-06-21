@@ -55,8 +55,8 @@ func insertRandomTestData(t *testing.T, db *DB) []*models.ClipboardEvent {
 	now := time.Now()
 	events := []*models.ClipboardEvent{
 		{
-			PrimaryMimeType: "image/png",
-			Time:            now,
+			MimeType: "image/png",
+			Time:     now,
 			Entries: []models.ClipboardEntry{
 				getTestTextEntry(t, "hello"),
 				getTestTextEntry(t, "world"),
@@ -65,16 +65,16 @@ func insertRandomTestData(t *testing.T, db *DB) []*models.ClipboardEvent {
 			Preview: "hello world",
 		},
 		{
-			PrimaryMimeType: "text/plain",
-			Time:            now,
+			MimeType: "text/plain",
+			Time:     now,
 			Entries: []models.ClipboardEntry{
 				getTestTextEntry(t, "lorem ipsum dolor sit amet"),
 			},
 			Preview: "lorem ipsum dolor sit amet",
 		},
 		{
-			PrimaryMimeType: "image/jpeg",
-			Time:            now,
+			MimeType: "image/jpeg",
+			Time:     now,
 			Entries: []models.ClipboardEntry{
 				getTestTextEntry(t, "second"),
 				getTestTextEntry(t, "clipboard"),

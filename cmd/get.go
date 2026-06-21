@@ -7,9 +7,9 @@ import (
 	"os"
 	"slices"
 
-	"github.com/Nadim147c/yankd/internal/db"
+	"github.com/Nadim147c/yankd/internal/ipc"
 	"github.com/Nadim147c/yankd/internal/models"
-	"github.com/spf13/cast"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -28,24 +28,19 @@ var getCommand = &cobra.Command{
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id, err := cast.ToInt64E(args[0])
+		id, err := uuid.Parse(args[0])
 		if err != nil {
 			return err
 		}
-		db, err := db.CreateDB()
-		if err != nil {
-			return err
-		}
-		defer db.Close()
 
-		event, err := db.Get(cmd.Context(), id)
+		event, err := ipc.GetEvent(cmd.Context(), id)
 		if err != nil {
 			return err
 		}
 
 		if viper.GetBool("primary") {
 			idx := slices.IndexFunc(event.Entries, func(e models.ClipboardEntry) bool {
-				return e.MimeType == event.PrimaryMimeType
+				return e.MimeType == event.MimeType
 			})
 
 			if idx < 0 {

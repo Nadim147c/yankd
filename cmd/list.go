@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/Nadim147c/yankd/internal/db"
-	"github.com/Nadim147c/yankd/internal/db/sqlc"
+	"github.com/Nadim147c/yankd/internal/ipc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -37,17 +36,10 @@ var listCommand = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		limit := viper.GetInt64("limit")
 
-		db, err := db.CreateDB()
+		events, err := ipc.GetSearch(cmd.Context(), "", limit)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get search items: %w", err)
 		}
-		defer db.Close()
-
-		events, err := db.List(cmd.Context(), limit)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
 
 		switch viper.GetString("format") {
 		case "json":
@@ -58,9 +50,9 @@ var listCommand = &cobra.Command{
 	},
 }
 
-func formatPlainPreview(events []sqlc.GetEventsPreviewAndIDRow) error { //nolint:unparam
-	for event := range slices.Values(events) {
-		fmt.Fprintf(os.Stdout, "%d\t%s\t%s\n", event.ID, event.PrimaryMimeType, event.Preview) //nolint:errcheck
+func formatPlainPreview(events []db.SearchResult) error {
+	for _, event := range events {
+		fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", event.ID, event.MimeType, event.Preview) //nolint:errcheck
 	}
 	return nil
 }

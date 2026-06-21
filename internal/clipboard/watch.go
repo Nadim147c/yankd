@@ -49,7 +49,8 @@ func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataContr
 		return
 	}
 
-	slog.Info("mime types collected",
+	slog.Info(
+		"mime types collected",
 		"offer_id", e.Id.Id(),
 		"count", len(collector.mimes),
 		"mimes", collector.mimes,

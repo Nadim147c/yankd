@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"strconv"
+	"log/slog"
 
 	"github.com/Nadim147c/yankd/internal/ipc"
+	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 )
 
@@ -16,22 +17,30 @@ var daemonPauseCommand = &cobra.Command{
 	Short: "Pause history saving",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := ipc.NewClient()
-
 		if len(args) == 0 || args[0] == "toggle" {
-			return client.SendPause(cmd.Context(), ipc.PauseCmdToggle)
+			v, err := ipc.SetPause(cmd.Context(), ipc.PauseToggle)
+			if err != nil {
+				return err
+			}
+			slog.Info("toggled history saving", "is_paused", v)
+			return nil
 		}
 
-		b, err := strconv.ParseBool(args[0])
+		toggleValue, err := cast.ToBoolE(args[0])
 		if err != nil {
 			return err
 		}
 
-		newState := ipc.PauseCmdFalse
-		if b {
-			newState = ipc.PauseCmdTrue
+		newState := ipc.PauseFalse
+		if toggleValue {
+			newState = ipc.PauseTrue
 		}
 
-		return client.SendPause(cmd.Context(), newState)
+		v, err := ipc.SetPause(cmd.Context(), newState)
+		if err != nil {
+			return err
+		}
+		slog.Info("toggled history saving", "is_paused", v)
+		return nil
 	},
 }

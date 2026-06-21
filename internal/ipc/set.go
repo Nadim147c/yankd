@@ -2,43 +2,53 @@ package ipc
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"log/slog"
+	"net/http"
+
+	"github.com/Nadim147c/yankd/internal/models"
+	"github.com/google/uuid"
 )
 
-func (s *Server) handleSet(req *msg) *msg {
-	var id int64
-	_, err := fmt.Fscanf(req, "%d", &id)
+func SetEvent(ctx context.Context, id uuid.UUID) (e models.ClipboardEvent, err error) {
+	c := NewClient()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/set/%s", BaseURL, id.String()), nil)
 	if err != nil {
-		return newErrMsg(err)
+		return e, err
+	}
+	req.Header.Add("Accept", "Application/json")
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return e, fmt.Errorf("failed to send request to ipc server: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return e, extractError(resp)
 	}
 
-	event, err := s.db.Get(s.ctx, id)
-	if err != nil {
-		return newErrMsg(err)
-	}
-
-	slog.Debug("setting/offering clipboard!")
-	err = s.cb.SetClipboard(event)
-	if err != nil {
-		return newErrMsg(err)
-	}
-
-	return new(msg)
+	err = json.NewDecoder(resp.Body).Decode(&e)
+	return e, err
 }
 
-func (c *Client) SendSet(ctx context.Context, id int64) error {
-	req := new(msg)
-	req.command = commandSet
-	fmt.Fprint(req, id) //nolint:errcheck // writing small data with buffer
-	resp, err := c.sendMsg(ctx, req)
-	if err != nil {
-		return err
-	}
-	if resp.status != statusOk {
-		slog.Error("failed to set clipboard", "error", resp.String())
-		return errors.New(resp.String())
-	}
-	return nil
+func (s *Server) SetEventHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		res, err := s.db.Get(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = s.cb.SetClipboard(res)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		renderJSON(w, res)
+	})
 }

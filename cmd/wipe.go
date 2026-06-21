@@ -3,7 +3,7 @@ package cmd
 import (
 	"log/slog"
 
-	"github.com/Nadim147c/yankd/internal/db"
+	"github.com/Nadim147c/yankd/internal/ipc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,13 +20,7 @@ var wipeCommand = &cobra.Command{
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		db, err := db.CreateDB()
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		n, err := db.Wipe(cmd.Context())
+		n, err := ipc.WipeDatabase(cmd.Context())
 		if err != nil {
 			return err
 		}

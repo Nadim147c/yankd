@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/Nadim147c/yankd/internal/db"
+	"github.com/Nadim147c/yankd/internal/ipc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -37,20 +38,12 @@ var searchCommand = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
-
 		limit := viper.GetInt64("limit")
 
-		db, err := db.CreateDB()
+		events, err := ipc.GetSearch(cmd.Context(), query, limit)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get search items: %w", err)
 		}
-		defer db.Close()
-
-		events, err := db.Search(cmd.Context(), query, limit)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
 
 		switch viper.GetString("format") {
 		case "json":

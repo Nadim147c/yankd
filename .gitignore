@@ -2,7 +2,7 @@ build
 yankd*
 !yankd/**
 Makefile.local
-result
+result*
 .direnv/*
 vendor/
 tmp

@@ -12,8 +12,8 @@ func TestDB_Insert(t *testing.T) {
 
 	entry := getTestBinaryEntry(t, "image/png", 1024)
 	event := models.ClipboardEvent{
-		PrimaryMimeType: "image/png",
-		Time:            time.Now(),
+		MimeType: "image/png",
+		Time:     time.Now(),
 		Entries: []models.ClipboardEntry{
 			getTestTextEntry(t, "hello"),
 			getTestTextEntry(t, "world"),
@@ -27,24 +27,22 @@ func TestDB_Insert(t *testing.T) {
 		t.Fatalf("failed to insert event: %v", err)
 	}
 
-	count, err := db.queries.CountContents(t.Context())
-	if err != nil {
+	var count int
+	if err := db.sql.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM contents").Scan(&count); err != nil {
 		t.Fatalf("failed to count contents: %v", err)
 	}
 	if count != 3 {
 		t.Fatalf("expected %d, got %d", 3, count)
 	}
 
-	count, err = db.queries.CountEntries(t.Context())
-	if err != nil {
+	if err := db.sql.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM entries").Scan(&count); err != nil {
 		t.Fatalf("failed to count entries: %v", err)
 	}
 	if count != 4 {
 		t.Fatalf("expected %d, got %d", 4, count)
 	}
 
-	count, err = db.queries.CountEvents(t.Context())
-	if err != nil {
+	if err := db.sql.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM events").Scan(&count); err != nil {
 		t.Fatalf("failed to count events: %v", err)
 	}
 	if count != 1 {

@@ -3,38 +3,20 @@ package ipc
 import (
 	"context"
 	"net"
+	"net/http"
 )
 
 // Client connects to a Unix socket and sends/receives messages.
 type Client struct{}
 
-func NewClient() *Client {
-	return new(Client)
-}
-
-func (c *Client) send(ctx context.Context, cmd command, data []byte) (*msg, error) {
-	var req msg
-	req.command = cmd
-	req.buf = data
-	return c.sendMsg(ctx, &req)
-}
-
-func (c *Client) sendMsg(ctx context.Context, req *msg) (*msg, error) {
-	socketPath := getSocketPath()
-
-	var dialer net.Dialer
-
-	conn, err := dialer.DialContext(ctx, "unix", socketPath)
-	if err != nil {
-		return nil, err
+func NewClient() *http.Client {
+	socket := getSocketPath()
+	return &http.Client{ //nolint:exhaustruct
+		Transport: &http.Transport{ //nolint:exhaustruct
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socket)
+			},
+		},
 	}
-	defer conn.Close()
-
-	err = req.Encode(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp msg
-	return &resp, resp.Decode(conn)
 }
