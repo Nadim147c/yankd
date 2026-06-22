@@ -1,21 +1,37 @@
 # Do not call this package with regular arguments
 {
-  src,
   lib,
   stdenv,
+  buildGoModule,
   installShellFiles,
-  buildGoApplication,
+  duckdb-fts-extension,
   writableTmpDirAsHomeHook,
 }:
 let
-  inherit (lib) optionalString licenses;
+  inherit (lib) cleanSource optionalString licenses;
+  inherit (lib.fileset) toSource unions;
 in
-buildGoApplication rec {
+buildGoModule rec {
   pname = "yankd";
   version = "0-unstable-2025-03-06";
 
-  inherit src;
-  modules = ../gomod2nix.toml;
+  src = cleanSource (toSource {
+    root = ../.;
+    fileset = unions [
+      ../cmd
+      ../internal
+      ../main.go
+      ../go.mod
+      ../go.sum
+    ];
+  });
+
+  postPatch = ''
+    substituteInPlace internal/db/configure.sql \
+      --replace-fail "INSTALL fts;" "FORCE INSTALL fts FROM '${duckdb-fts-extension}';"
+  '';
+
+  vendorHash = "sha256-bNlCh31+Ws73i169TaOIBkTKYdX/r5t3k7gUX7XCEY4=";
 
   ldflags = [
     "-s"
