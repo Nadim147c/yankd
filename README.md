@@ -20,7 +20,7 @@
 
 - [x] Implemets Wayland native protocal.
 - [x] Saves raw and parsed image metadata.
-- [x] Fuzzy search using `fzf` algorithm.
+- [x] DuckDB full-text search.
 - [x] Restore clipboard content with metadata.
 - [x] Get clipboard as `json`.
 - [x] Delete clipboard item.
@@ -30,9 +30,9 @@
   - Use quickshell example for search UI.
 
 > [!CAUTION]
-> 🚧 **Highly Experimental & Unstable**. This project is in active development and
-> may break at any time. Expect bugs, missing features, unexpected behavior, and
-> frequent changes.
+> 🚧 **Highly Experimental & Unstable**. This project is in active development
+> and may break at any time. Expect bugs, missing features, unexpected behavior,
+> and frequent changes.
 
 ## Install
 
@@ -86,7 +86,8 @@ Add this to hyprland.conf:
 exec-once = yankd daemon
 ```
 
-> This will start yankd daemon on startup. You can run `hyprctl dispatch exec yankd daemon` to start it manually.
+> This will start yankd daemon on startup. You can run
+> `hyprctl dispatch exec yankd daemon` to start it manually.
 
 #### Systemd User Service
 
