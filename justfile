@@ -21,7 +21,7 @@ build:
 
 compile os arch:
     env \
-      CGO_ENABLED=0 \
+      CGO_ENABLED=1 \
       GOOS="{{ os }}" \
       GOARCH="{{ arch }}" \
       go build -trimpath -ldflags '-s -w -X main.Version={{ version }}' -o {{ bin }}

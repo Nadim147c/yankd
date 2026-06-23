@@ -51,7 +51,7 @@ func getContentsByHash(ctx context.Context, tx *sql.Tx, h models.Hash) ([]conten
 // Insert inserts a clip to database.
 func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
 	hasUpdatedIndex.Store(false)
 
 	if len(e.Entries) == 0 {
@@ -122,7 +122,7 @@ func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
         VALUES (?, ?, ?)
         RETURNING id
       `
-			err := db.sql.
+			err := tx.
 				QueryRowContext(ctx, createContent, entry.Hash, entry.IsText, entry.Blob).
 				Scan(&contentID)
 			if err != nil {
@@ -139,7 +139,7 @@ func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
       INSERT INTO entries (event_id, mime_type, content_id)
       VALUES (?, ?, ?)
     `
-		_, err = db.sql.ExecContext(ctx, createEntry, e.ID, entry.MimeType, contentID)
+		_, err = tx.ExecContext(ctx, createEntry, e.ID, entry.MimeType, contentID)
 		if err != nil {
 			return fmt.Errorf("failed to insert entry: %w", err)
 		}

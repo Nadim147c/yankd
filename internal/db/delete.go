@@ -11,7 +11,9 @@ import (
 // Delete deletes multiple items from database.
 func (db *DB) Delete(ctx context.Context, ids ...uuid.UUID) (int64, error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
+	hasUpdatedIndex.Store(false)
+
 	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -81,7 +83,8 @@ func optimziseDatabse(ctx context.Context, tx *sql.Tx) (int64, error) {
 // Wipe deletes all items from database.
 func (db *DB) Wipe(ctx context.Context) (int64, error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
+	hasUpdatedIndex.Store(false)
 
 	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {

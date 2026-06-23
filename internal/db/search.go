@@ -2,10 +2,13 @@ package db
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
 )
 
@@ -19,16 +22,25 @@ type SearchResult struct {
 	Preview  string    `json:"preview"`
 }
 
+func isDatabaseOutOfSync(err error) bool {
+	v, ok := errors.AsType[*duckdb.Error](err)
+	if ok && v.Type == duckdb.ErrorTypeCatalog &&
+		strings.Contains(v.Msg, "Scalar Function with name match_bm25 does not exist!") {
+		return true
+	}
+	return false
+}
+
 // Search runs full-text search in database and returns matched items.
 // If query is empty, it returns the latest items instead.
 func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchResult, error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
 	if limit <= 0 {
 		return nil, nil
 	}
 	if query == "" {
-		db.mu.Unlock()
+		db.SafeUnlock()
 		res, err := db.List(ctx, limit)
 		db.mu.Lock()
 		return res, err
@@ -42,7 +54,7 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchRe
 		db.sql.ExecContext(ctx, dropFTSIndex) //nolint // No need to handle error
 		slog.Debug("(re)creating the full-text search index")
 		const buildFTSIndex = `
-      PRAGMA create_fts_index('events', 'id', 'preview');
+      PRAGMA create_fts_index('events', 'id', 'preview', 'primary_mime_type');
     `
 		_, err := db.sql.ExecContext(ctx, buildFTSIndex)
 		if err != nil {
@@ -62,6 +74,13 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchRe
   `
 	rows, err := db.sql.QueryContext(ctx, fts, query, limit)
 	if err != nil {
+		if isDatabaseOutOfSync(err) {
+			slog.Info("re-trying search due to database synchronization issue")
+			hasUpdatedIndex.Store(false)
+			db.SafeUnlock()
+			db.reconnect()
+			return db.Search(ctx, query, limit)
+		}
 		return nil, err
 	}
 	defer rows.Close()
@@ -88,7 +107,7 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchRe
 // If query is empty, it returns the latest items instead.
 func (db *DB) List(ctx context.Context, limit int64) ([]SearchResult, error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
 	if limit <= 0 {
 		return nil, nil
 	}
