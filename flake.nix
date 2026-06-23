@@ -2,99 +2,86 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
-    gomod2nix = {
-      url = "github:nix-community/gomod2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
   };
 
   outputs =
+    { self, nixpkgs, ... }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+
+      inherit (nixpkgs) lib;
+
+      perSystem =
+        f:
+        lib.genAttrs systems (
+          system:
+          let
+            pkgs = import nixpkgs { inherit system; };
+          in
+          f { inherit lib system pkgs; }
+        );
+    in
     {
-      nixpkgs,
-      flake-utils,
-      gomod2nix,
-      ...
-    }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
-      system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        inherit (pkgs) callPackage lib;
-        gomod = gomod2nix.legacyPackages.${system};
-
-        goSrc = lib.cleanSource (
-          lib.fileset.toSource {
-            root = ./.;
-            fileset = lib.fileset.unions [
-              ./.editorconfig
-              ./.golangci.yaml
-              ./cmd
-              ./internal
-              ./main.go
-              ./go.mod
-              ./go.sum
-            ];
-          }
-        );
-
-        extension = pkgs.callPackage ./nix/duckdb-fts-extension.nix { };
-        src = pkgs.runCommand "yankd-source" { } ''
-          mkdir -p $out
-          cp -r ${goSrc}/{,.}* $out/
-          substituteInPlace $out/internal/db/configure.sql \
-            --replace-fail "INSTALL fts;" "INSTALL fts FROM '${extension}';"
-        '';
-
-        mkGoTest = lib.mapAttrs' (
-          name: value:
-          lib.nameValuePair name (
-            gomod.buildGoApplication {
-              inherit name src;
-              dontBuild = true;
-              modules = ./gomod2nix.toml;
-              doCheck = true;
-              nativeBuildInputs = with pkgs; [
-                go
-                golangci-lint
-                gofumpt
-                writableTmpDirAsHomeHook
-              ];
-              checkPhase = value;
-              installPhase = ''
-                touch "$out"
-              '';
-            }
-          )
-        );
-
-      in
-      {
-        checks = mkGoTest {
-          go-test = /* bash */ ''
-            go test -v ./...
-          '';
-          go-vet = /* bash */ ''
-            go vet -v ./...
-          '';
-          go-lint = /* bash */ ''
-            golangci-lint run
-          '';
-          go-format = /* bash */ ''
-            gofumpt -d -e .
-          '';
-        };
-        packages = {
-          duckdb-fts-extension = extension;
-          default = callPackage ./nix/package.nix {
-            inherit (gomod) buildGoApplication;
-            inherit src;
+      packages = perSystem (
+        { pkgs, system, ... }: {
+          duckdb-fts-extension = pkgs.callPackage ./nix/duckdb-fts-extension.nix { };
+          yankd = pkgs.callPackage ./nix/package.nix {
+            inherit (self.packages.${system}) duckdb-fts-extension;
           };
-        };
-        devShells.default = callPackage ./nix/shell.nix {
-          inherit (gomod) gomod2nix;
-        };
-      }
-    );
+          default = self.packages.${system}.yankd;
+
+          ci-go-vet = pkgs.writeShellApplication {
+            name = "go-vet";
+            runtimeInputs = with pkgs; [ go ];
+            text = ''
+              go vet -v ./...
+            '';
+          };
+
+          ci-go-test = pkgs.writeShellApplication {
+            name = "go-test";
+            runtimeInputs = with pkgs; [ go ];
+            text = ''
+              go test -v ./...
+            '';
+          };
+
+          ci-go-lint = pkgs.writeShellApplication {
+            name = "go-test";
+            runtimeInputs = with pkgs; [ golangci-lint ];
+            text = ''
+              golangci-lint run
+            '';
+          };
+
+          ci-format = pkgs.writeShellApplication {
+            name = "format";
+            runtimeInputs = with pkgs; [ gofumpt ];
+            text = ''
+              gofumpt -d -e .
+            '';
+          };
+
+          ci-go-mod-tidy = pkgs.writeShellApplication {
+            name = "go-mod-tidy";
+            runtimeInputs = with pkgs; [
+              go
+              git
+            ];
+            text = ''
+              go mod tidy
+              env PAGER= git diff --exit-code
+            '';
+          };
+        }
+      );
+      devShells = perSystem (
+        { pkgs, ... }: {
+          default = pkgs.callPackage ./nix/shell.nix { };
+        }
+      );
+    };
 }
