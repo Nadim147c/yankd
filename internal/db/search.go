@@ -42,7 +42,7 @@ func (db *DB) Search(ctx context.Context, query string, limit int64) ([]SearchRe
 		db.sql.ExecContext(ctx, dropFTSIndex) //nolint // No need to handle error
 		slog.Debug("(re)creating the full-text search index")
 		const buildFTSIndex = `
-      PRAGMA create_fts_index('events', 'id', 'preview');
+      PRAGMA create_fts_index('events', 'id', 'preview', 'primary_mime_type');
     `
 		_, err := db.sql.ExecContext(ctx, buildFTSIndex)
 		if err != nil {
