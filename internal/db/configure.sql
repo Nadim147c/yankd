@@ -1,6 +1,8 @@
-INSTALL fts;
+INSTALL rapidfuzz
+FROM
+  community;
 
-LOAD fts;
+LOAD rapidfuzz;
 
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT uuidv7 (),

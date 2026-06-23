@@ -27,7 +27,10 @@ compile os arch:
       go build -trimpath -ldflags '-s -w -X main.Version={{ version }}' -o {{ bin }}
 
 watch:
-  watchexec -e go -r --stop-signal 15 -- go run . daemon -vv
+  watchexec -e go,sql -r --stop-signal 15 -- go run . daemon -vv
+
+test:
+  go test -v ./...
 
 fmt:
   gofumpt -w .

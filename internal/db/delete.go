@@ -12,7 +12,6 @@ import (
 func (db *DB) Delete(ctx context.Context, ids ...uuid.UUID) (int64, error) {
 	db.mu.Lock()
 	defer db.SafeUnlock()
-	hasUpdatedIndex.Store(false)
 
 	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {
@@ -84,7 +83,6 @@ func optimziseDatabse(ctx context.Context, tx *sql.Tx) (int64, error) {
 func (db *DB) Wipe(ctx context.Context) (int64, error) {
 	db.mu.Lock()
 	defer db.SafeUnlock()
-	hasUpdatedIndex.Store(false)
 
 	tx, err := db.sql.BeginTx(ctx, nil)
 	if err != nil {
