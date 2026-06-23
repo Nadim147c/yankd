@@ -62,7 +62,7 @@ func (db *DB) getEntries(ctx context.Context, ids ...uuid.UUID) ([]ClipboardEntr
 // Get return a single clipboard item from history.
 func (db *DB) Get(ctx context.Context, id uuid.UUID) (m models.ClipboardEvent, err error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
 
 	const getEvent = `
     SELECT id, primary_mime_type, time, preview FROM events
@@ -94,7 +94,7 @@ func (db *DB) Get(ctx context.Context, id uuid.UUID) (m models.ClipboardEvent, e
 // GetMany return a single clipboard item from history.
 func (db *DB) GetMany(ctx context.Context, ids ...uuid.UUID) ([]models.ClipboardEvent, error) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
+	defer db.SafeUnlock()
 
 	const getEvents = `
     SELECT id, primary_mime_type, time, preview FROM events

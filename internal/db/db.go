@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,20 +26,22 @@ var internalTestModeDoNotUse = false
 func CreateDB() (*DB, error) {
 	dbPath, err := getDatabasePath()
 	if err != nil {
-		return nil, err
+		slog.Error("failed to get database path", "error", err)
+		os.Exit(1)
 	}
 
 	sqlDB, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
-		return nil, err
+		os.Exit(1)
 	}
 
 	slog.Info("database connected successfully")
 	db := new(DB)
 	db.sql = sqlDB
 	if err := db.initialize(); err != nil {
-		log.Fatalf("database initialization failed: %v", err)
+		slog.Error("database initialization failed", "error", err)
+		os.Exit(1)
 	}
 	return db, nil
 }
@@ -69,9 +70,48 @@ func getDatabasePath() (string, error) {
 	return filepath.Join(dbDir, "history-duckdb.db"), nil
 }
 
+// reconnect will close existing database connection and
+// reconnect to that database.
+func (db *DB) reconnect() {
+	db.mu.Lock()
+	defer db.SafeUnlock()
+
+	err := db.sql.Close()
+	if err != nil {
+		slog.Error("failed to close existing", "error", err)
+		os.Exit(1)
+	}
+	dbPath, err := getDatabasePath()
+	if err != nil {
+		slog.Error("failed to get database path", "error", err)
+		os.Exit(1)
+	}
+
+	sqlDB, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		slog.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("database connected successfully")
+	db.sql = sqlDB
+	if err := db.initialize(); err != nil {
+		slog.Error("database initialization failed", "error", err)
+		os.Exit(1)
+	}
+}
+
 // Close closes the database connection.
 func (db *DB) Close() error {
 	return db.sql.Close()
+}
+
+// SafeUnlock tries to unlock underlying mutex.
+// Return true if mutex was locked.
+func (db *DB) SafeUnlock() (unlocked bool) {
+	locked := db.mu.TryLock()
+	db.mu.Unlock()
+	return !locked
 }
 
 //go:embed configure.sql
@@ -79,10 +119,6 @@ var configureQuery string
 
 // initialize initializes the database connection and full-text search.
 func (db *DB) initialize() error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-	if _, err := db.sql.Exec(configureQuery); err != nil { //nolint:noctx
-		return err
-	}
-	return nil
+	_, err := db.sql.Exec(configureQuery) //nolint:noctx
+	return err
 }
