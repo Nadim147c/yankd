@@ -27,9 +27,9 @@
     {
       packages = perSystem (
         { pkgs, system, ... }: {
-          duckdb-fts-extension = pkgs.callPackage ./nix/duckdb-fts-extension.nix { };
+          duckdb-rapidfuzz-extension = pkgs.callPackage ./nix/duckdb-rapidfuzz-extension.nix { };
           yankd = pkgs.callPackage ./nix/package.nix {
-            inherit (self.packages.${system}) duckdb-fts-extension;
+            inherit (self.packages.${system}) duckdb-rapidfuzz-extension;
           };
           default = self.packages.${system}.yankd;
 
