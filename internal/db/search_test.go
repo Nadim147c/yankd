@@ -29,15 +29,4 @@ func TestDB_Search(t *testing.T) {
 			t.Fatalf("expected %d, got %d", data[0].ID, res[0].ID)
 		}
 	})
-
-	t.Run("ambiguous query", func(t *testing.T) {
-		res, err := db.Search(t.Context(), "XXXXXXXXXXXXXXXXXXXXXXX", int64(count))
-		if err != nil {
-			t.Fatalf("failed to search: %v", err)
-		}
-
-		if len(res) != 0 {
-			t.Fatalf("expected 0, got %d", len(res))
-		}
-	})
 }

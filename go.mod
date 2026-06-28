@@ -7,6 +7,7 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/carapace-sh/carapace v1.10.3
 	github.com/charmbracelet/log v0.4.2
+	github.com/dromara/carbon/v2 v2.6.16
 	github.com/duckdb/duckdb-go/v2 v2.10503.1
 	github.com/google/uuid v1.6.0
 	github.com/neurlang/wayland v0.3.0

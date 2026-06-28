@@ -2,9 +2,10 @@
 {
   lib,
   stdenv,
+  replaceVars,
   buildGoModule,
   installShellFiles,
-  duckdb-fts-extension,
+  duckdb-rapidfuzz-extension,
   writableTmpDirAsHomeHook,
 }:
 let
@@ -26,12 +27,13 @@ buildGoModule rec {
     ];
   });
 
-  postPatch = ''
-    substituteInPlace internal/db/configure.sql \
-      --replace-fail "INSTALL fts;" "FORCE INSTALL fts FROM '${duckdb-fts-extension}';"
-  '';
+  patches = [
+    (replaceVars ./configure.sql.patch {
+      install = "FORCE INSTALL '${duckdb-rapidfuzz-extension}/share/duckdb/rapidfuzz.duckdb_extension'; LOAD rapidfuzz;";
+    })
+  ];
 
-  vendorHash = "sha256-bNlCh31+Ws73i169TaOIBkTKYdX/r5t3k7gUX7XCEY4=";
+  vendorHash = "sha256-FTvLNyjrtPzBvatf0ZBfD+wywpy1OeXGASyPxFNcLh4=";
 
   ldflags = [
     "-s"

@@ -1,0 +1,14 @@
+diff --git i/internal/db/configure.sql w/internal/db/configure.sql
+index 5b27bf1..2141b97 100644
+--- i/internal/db/configure.sql
++++ w/internal/db/configure.sql
+@@ -1,8 +1,4 @@
+-INSTALL rapidfuzz
+-FROM
+-  community;
+-
+-LOAD rapidfuzz;
++@install@
+
+ CREATE TABLE IF NOT EXISTS events (
+   id UUID PRIMARY KEY DEFAULT uuidv7 (),

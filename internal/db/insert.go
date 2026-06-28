@@ -52,7 +52,6 @@ func getContentsByHash(ctx context.Context, tx *sql.Tx, h models.Hash) ([]conten
 func (db *DB) Insert(ctx context.Context, e *models.ClipboardEvent) error {
 	db.mu.Lock()
 	defer db.SafeUnlock()
-	hasUpdatedIndex.Store(false)
 
 	if len(e.Entries) == 0 {
 		return errors.New("clipboard has no content")
