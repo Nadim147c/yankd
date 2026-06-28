@@ -1,4 +1,4 @@
-name: Nix Flack Check and Build
+name: Nix Flake Check and Build
 on:
   pull_request:
   push:
