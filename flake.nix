@@ -33,35 +33,49 @@
           };
           default = self.packages.${system}.yankd;
 
-          ci-go-vet = pkgs.writeShellApplication {
-            name = "go-vet";
-            runtimeInputs = with pkgs; [ go ];
-            text = ''
-              go vet -v ./...
-            '';
-          };
-
-          ci-go-test = pkgs.writeShellApplication {
-            name = "go-test";
+          ci-test = pkgs.writeShellApplication {
+            name = "test";
             runtimeInputs = with pkgs; [ go ];
             text = ''
               go test -v ./...
             '';
           };
 
-          ci-go-lint = pkgs.writeShellApplication {
-            name = "go-test";
-            runtimeInputs = with pkgs; [ golangci-lint ];
+          ci-lint = pkgs.writeShellApplication {
+            name = "lint";
+            runtimeInputs = with pkgs; [
+              coreutils
+              deadnix
+              fd
+              go
+              golangci-lint
+              gotools
+              ripgrep
+            ];
             text = ''
               golangci-lint run
+              go fix -diff ./...
+              go vet -v ./...
+
+              deadcode_result=$(mktemp)
+              deadcode ./... |
+                rg -v "(ipc)" | # Allowed dead codes
+                tee "$deadcode_result" && [ ! -s "$deadcode_result" ] # rest is error
+
+              fd --type file '\.nix$' --exec-batch deadnix -f {}
             '';
           };
 
           ci-format = pkgs.writeShellApplication {
             name = "format";
-            runtimeInputs = with pkgs; [ gofumpt ];
+            runtimeInputs = with pkgs; [
+              gofumpt
+              fd
+              nixfmt
+            ];
             text = ''
               gofumpt -d -e .
+              fd --type file '\.nix$' --exec-batch nixfmt -c {}
             '';
           };
 
