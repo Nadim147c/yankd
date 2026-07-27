@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,26 @@ import (
 	"github.com/Nadim147c/yankd/internal/models"
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 )
+
+var ErrContainsSecrets = errors.New("clipboard content contains secrets")
+
+func containsPEMSecret(b []byte) bool {
+	for {
+		var block *pem.Block
+		block, b = pem.Decode(b)
+		if block == nil {
+			break
+		}
+		typeUpper := strings.ToUpper(block.Type)
+		// Explicitly allow known non-secret public key variants
+		if strings.Contains(typeUpper, "PUBLIC KEY") {
+			continue
+		}
+		return true
+	}
+
+	return false
+}
 
 type clipboardParser struct {
 	offer *protocol.ZwlrDataControlOfferV1
@@ -111,6 +132,10 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
 	for _, mime := range c.mimes {
+		if mime == "x-kde-passwordManagerHint" {
+			return models.ClipboardEvent{}, ErrContainsSecrets
+		}
+
 		if isBadMime(mime) {
 			continue
 		}
@@ -121,6 +146,10 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 		}
 		if len(v) == 0 {
 			continue
+		}
+
+		if containsPEMSecret(v) {
+			return models.ClipboardEvent{}, ErrContainsSecrets
 		}
 
 		hash := models.NewHash(v)
