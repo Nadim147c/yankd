@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,45 +16,25 @@ import (
 
 type SearchResult struct {
 	ID       uuid.UUID `json:"id"`
-	Score    float64   `json:"score"`
 	Time     time.Time `json:"time"`
 	MimeType string    `json:"mime_type"`
 	Preview  string    `json:"preview"`
+	Score    float64   `json:"score"`
 }
 
+// isDatabaseOutOfSync is a hack!
+// This is what you get for using unreliable database.
 func isDatabaseOutOfSync(err error) bool {
 	v, ok := errors.AsType[*duckdb.Error](err)
-	if ok && v.Type == duckdb.ErrorTypeCatalog &&
-		strings.Contains(v.Msg, "Scalar Function with name match_bm25 does not exist!") {
-		return true
-	}
-	return false
+	return ok && v.Type == duckdb.ErrorTypeCatalog &&
+		strings.Contains(v.Msg, "does not exist!")
 }
 
 // BuildQuery constructs a parameterized SQL query from the given Query struct.
 // It returns the query string and a slice of arguments to be passed to the driver.
 func BuildQuery(q query.Query) (string, []any) {
-	var simFunc string
-	switch q.Flag {
-	case query.Fuzzy:
-		simFunc = "rapidfuzz_ratio"
-	case query.Prefix:
-		simFunc = "rapidfuzz_prefix_similarity"
-	case query.Suffix:
-		simFunc = "rapidfuzz_postfix_similarity"
-	default:
-		panic("unreachable")
-	}
-
 	var whereParts []string
-	args := []any{q.Fuzzy}
-
-	var typScore string
-	if q.Type != "" {
-		typScore = " + rapidfuzz_ratio(primary_mime_type, ?)"
-		args = append(args, q.Type)
-	}
-
+	args := []any{}
 	if q.After.IsValid() {
 		whereParts = append(whereParts, "time > ?")
 		args = append(args, q.After.StdTime())
@@ -75,6 +56,10 @@ func BuildQuery(q query.Query) (string, []any) {
 		}
 	}
 
+	if q.Type != "" {
+		whereParts = append(whereParts, "type_score > 70")
+	}
+
 	whereClause := "true"
 	if len(whereParts) > 0 {
 		whereClause = strings.Join(whereParts, " AND ")
@@ -82,15 +67,28 @@ func BuildQuery(q query.Query) (string, []any) {
 
 	query := fmt.Sprintf(`
 		SELECT id, primary_mime_type, time, preview,
-          (%s(preview, ?)%s) AS score
+       rapidfuzz_ratio              (preview, ?) as ratio_score,
+       rapidfuzz_osa_similarity     (preview, ?) as osa_score,
+       rapidfuzz_lcs_seq_similarity (preview, ?) as lcs_score,
+       rapidfuzz_prefix_similarity  (preview, ?) as prefix_score,
+       rapidfuzz_postfix_similarity (preview, ?) as suffix_score,
+       rapidfuzz_partial_ratio      (preview, ?) as partial_score_prime,
+       partial_score_prime * list_min([length(preview)/length(?), 1]) as partial_score,
+
+       rapidfuzz_ratio              (primary_mime_type, ?) as type_score,
+
+       ratio_score + partial_score + osa_score +
+       lcs_score + prefix_score + suffix_score + type_score as score
     FROM events
 		WHERE score IS NOT NULL AND %s
 		ORDER BY score DESC
 		LIMIT ?;
-	`, simFunc, typScore, whereClause)
+	`, whereClause)
 
-	args = append(args, q.Limit)
-	return query, args
+	previews := slices.Repeat([]any{q.Fuzzy}, 7)
+
+	args = append(args, q.Type, q.Limit)
+	return query, append(previews, args...)
 }
 
 // Search runs full-text search in database and returns matched items.
@@ -98,14 +96,19 @@ func BuildQuery(q query.Query) (string, []any) {
 func (db *DB) Search(ctx context.Context, q string, limit int64) ([]SearchResult, error) {
 	db.mu.Lock()
 	defer db.SafeUnlock()
+
 	if limit <= 0 {
 		return nil, nil
 	}
+
 	if q == "" {
 		db.SafeUnlock()
 		res, err := db.List(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
 		db.mu.Lock()
-		return res, err
+		return res, nil
 	}
 
 	structuredQuery, warnings := query.Parse([]byte(q))
@@ -133,7 +136,27 @@ func (db *DB) Search(ctx context.Context, q string, limit int64) ([]SearchResult
 	items := []SearchResult{}
 	for rows.Next() {
 		var i SearchResult
-		if err := rows.Scan(&i.ID, &i.MimeType, &i.Time, &i.Preview, &i.Score); err != nil {
+
+		// TODO: Do something with these value
+		var PartialScorePrime, RatioScore, PartialScore, OsaScore,
+			LcsScore, PrefixScore, SuffixScore, TypeScore float64
+
+		err := rows.Scan(
+			&i.ID,
+			&i.MimeType,
+			&i.Time,
+			&i.Preview,
+			&RatioScore,
+			&OsaScore,
+			&LcsScore,
+			&PrefixScore,
+			&SuffixScore,
+			&TypeScore,
+			&PartialScorePrime,
+			&PartialScore,
+			&i.Score,
+		)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -173,16 +196,19 @@ func (db *DB) List(ctx context.Context, limit int64) ([]SearchResult, error) {
 	items := []SearchResult{}
 	for rows.Next() {
 		var i SearchResult
-		if err := rows.Scan(&i.ID, &i.MimeType, &i.Time, &i.Preview); err != nil {
+		err := rows.Scan(&i.ID, &i.MimeType, &i.Time, &i.Preview)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, i)
 	}
 
-	if err := rows.Close(); err != nil {
+	err = rows.Close()
+	if err != nil {
 		return nil, err
 	}
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, err
 	}
 	return items, nil
