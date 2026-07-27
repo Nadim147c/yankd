@@ -93,6 +93,12 @@ var badMimes = []*regexp.Regexp{
 	regexp.MustCompile(`microsoft`),
 }
 
+func isBadMime(mime string) bool {
+	return slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
+		return re.MatchString(mime)
+	})
+}
+
 // parse converts the retrieved data into a Clip struct.
 func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 	slog.Debug("parsing clipboard data")
@@ -105,10 +111,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
 	for _, mime := range c.mimes {
-		isBadMime := slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
-			return re.MatchString(mime)
-		})
-		if isBadMime {
+		if isBadMime(mime) {
 			continue
 		}
 
