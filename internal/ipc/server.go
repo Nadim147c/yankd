@@ -83,6 +83,7 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux.Handle("POST /get", s.GetManyEventsHandler())
 	mux.Handle("POST /pause/{state}", s.PauseHandler())
 	mux.Handle("POST /set/{id}", s.SetEventHandler())
+	mux.Handle("POST /set-custom", s.SetCustomHandler())
 	mux.Handle("POST /wipe", s.WipeDatabaseHandler())
 
 	httpServer := &http.Server{

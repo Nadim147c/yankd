@@ -66,6 +66,34 @@ Wipes the entire clipboard history database.
 
 - **Response:** JSON integer representing the number of events deleted.
 
+### `POST /set-custom`
+
+Sets arbitrary clipboard content with one or more MIME types. This allows clients
+to inject custom clipboard entries into the history.
+
+- **Body:** JSON object with the following structure:
+  ```json
+  {
+    "mime_type": "text/plain",  // Optional: primary MIME type (auto-detected if omitted)
+    "preview": "hello world",   // Optional: preview text (auto-generated if omitted)
+    "entries": [
+      {
+        "mime_type": "text/plain",
+        "blob": "aGVsbG8="  // Base64 encoded content
+      }
+    ]
+  }
+  ```
+- **Response:** JSON object `{"status": "ok"}` on success.
+
+**Example using curl:**
+
+```bash
+curl --unix-socket $XDG_RUNTIME_DIR/yankd.sock -X POST http://localhost/set-custom \
+  -H "Content-Type: application/json" \
+  -d '{"entries":[{"mime_type":"text/plain","blob":"aGVsbG8gd29ybGQ="}]}'
+```
+
 ### `/pause/{state}`
 
 - **Parameters:** `state` (integer in the path):
