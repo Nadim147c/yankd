@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -74,6 +75,7 @@ func (s *Server) Listen(ctx context.Context) error {
 		return fmt.Errorf("failed to listen on unix socket: %w", err)
 	}
 	defer listener.Close()
+	slog.Info("Listening for ipc request", "addr", addr)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /get/{id}", s.GetEventHandler())
