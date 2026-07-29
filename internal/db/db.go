@@ -57,7 +57,7 @@ func getDatabasePath() (string, error) {
 		return "", errors.New("database directory can not be empty")
 	}
 
-	slog.Info("databse initialization", "database-dir", dbDir)
+	slog.Info("database initialization", "database-dir", dbDir)
 	if err := os.MkdirAll(dbDir, 0o750); err != nil {
 		slog.Error(
 			"failed to create database directory",

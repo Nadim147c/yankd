@@ -46,7 +46,7 @@ func (w *wordWritter) String() string {
 	return re.ReplaceAllString(w.buf.String(), " ")
 }
 
-func generatePreivew(entires []models.ClipboardEntry) string {
+func generatePreivew(entries []models.ClipboardEntry) string {
 	buf := &wordWritter{
 		buf:     bytes.NewBuffer(make([]byte, 0, maxPreviewLength)),
 		written: make(map[string]struct{}),
@@ -55,7 +55,7 @@ func generatePreivew(entires []models.ClipboardEntry) string {
 
 	const HTMLContent = "text/html"
 
-	sortedEntries := slices.Clone(entires)
+	sortedEntries := slices.Clone(entries)
 	slices.SortFunc(sortedEntries, func(a, b models.ClipboardEntry) int {
 		if a.MimeType == HTMLContent {
 			return 1

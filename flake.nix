@@ -51,11 +51,15 @@
               golangci-lint
               gotools
               ripgrep
+              codespell
             ];
             text = ''
               golangci-lint run
               go fix -diff ./...
               go vet -v ./...
+              codespell \
+                -xinternal/wlr-data-control-unstable-v1/wlr-data-control-unstable-v1.xml \
+                .
 
               deadcode_result=$(mktemp)
               deadcode ./... |
