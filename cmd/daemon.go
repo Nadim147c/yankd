@@ -20,7 +20,7 @@ func init() {
 var daemonCommand = &cobra.Command{
 	Use:     "daemon",
 	Aliases: []string{"watch"},
-	Short:   "Start yankd deamon",
+	Short:   "Start yankd daemon",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(cmd.Context())
 		defer cancel()

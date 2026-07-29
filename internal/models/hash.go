@@ -30,7 +30,7 @@ type hashConstraints interface {
 	Bytes() []byte
 }
 
-// do not compile unless all contrains are fulfilled.
+// Do not compile unless all constrains are fulfilled.
 var _ hashConstraints = (*Hash)(nil)
 
 // NewHash return xxhash for given data.
