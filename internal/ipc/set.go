@@ -5,14 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Nadim147c/yankd/internal/models"
 	"github.com/google/uuid"
 )
 
-func SetEvent(ctx context.Context, id uuid.UUID) (e models.ClipboardEvent, err error) {
+func SetEvent(ctx context.Context, id uuid.UUID, promote bool) (e models.ClipboardEvent, err error) {
 	c := NewClient()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/set/%s", BaseURL, id.String()), nil)
+	url := fmt.Sprintf("%s/set/%s", BaseURL, id.String())
+	if promote {
+		url += "?promote=true"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return e, err
 	}
@@ -48,6 +53,10 @@ func (s *Server) SetEventHandler() http.Handler {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if r.URL.Query().Get("promote") == "true" {
+			_ = s.db.UpdateEventTime(r.Context(), id, time.Now())
+			res.Time = time.Now()
 		}
 		renderJSON(w, res)
 	})

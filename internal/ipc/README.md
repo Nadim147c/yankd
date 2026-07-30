@@ -40,6 +40,10 @@ retrieves the event from the database and sets it as the active clipboard
 content.
 
 - **Parameters:** `id` (UUID in the path)
+- **Query Parameters:**
+  - `promote` (optional bool, default `false`): If `true`, updates the event's
+    timestamp to the current time after restoring to clipboard. This promotes
+    the item to the top of the list on the next search.
 - **Response:** JSON representation of the restored `ClipboardEvent`.
 
 ### `GET /search`
@@ -90,4 +94,10 @@ is `/run/user/1000`):
 
 ```bash
 curl --unix-socket /run/user/1000/yankd.sock "http://localhost/search?limit=10"
+
+Using `curl` to set a clipboard event and promote it to the top:
+
+```bash
+curl -X POST --unix-socket /run/user/1000/yankd.sock "http://localhost/set/<uuid>?promote=true"
+```
 ```
