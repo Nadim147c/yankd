@@ -68,7 +68,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // Listen accepts incoming connections and handles them until the context is
-// cancelled. The db parameter is currently ignored (reserved for future use).
+// canceled. The db parameter is currently ignored (reserved for future use).
 func (s *Server) Listen(ctx context.Context) error {
 	socketPath := getSocketPath()
 	s.ctx = ctx
@@ -94,6 +94,7 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle("GET /get/{id}", s.GetEventHandler())
 	mux.Handle("GET /search", s.SearchHandler())
+	mux.Handle("POST /copy", s.SetClipboardHandler())
 	mux.Handle("POST /delete", s.DeteteEventsHandler())
 	mux.Handle("POST /echo", s.EchoHandler())
 	mux.Handle("POST /get", s.GetManyEventsHandler())
@@ -119,14 +120,14 @@ func (s *Server) Listen(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		// Context was cancelled, gracefully shut down the server
+		// Context was canceled, gracefully shut down the server
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to gracefully shutdown: %w", err)
 		}
-		return ctx.Err() // returns context.Canceled
+		return ctx.Err() // Returns context.Canceled
 	case err := <-serverError:
 		return err
 	}

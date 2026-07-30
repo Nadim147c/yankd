@@ -27,6 +27,7 @@ func init() {
 	viper.SetEnvPrefix("yankd")
 	viper.AutomaticEnv()
 
+	// TODO: add flag completion for copy command
 	carapace.Gen(Command)
 }
 

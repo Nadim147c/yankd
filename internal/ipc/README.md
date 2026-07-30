@@ -75,6 +75,44 @@ Wipes the entire clipboard history database.
 - **Response:** JSON boolean indicating the new paused state (`true` if paused,
   `false` otherwise).
 
+### `POST /copy`
+
+Sets new clipboard content by storing a new event in the database and making it
+active in the system clipboard.
+
+- **Body:** JSON object mapping MIME type strings to base64-encoded raw byte
+  payloads.
+
+_Input example:_
+
+```json
+{ "text/plain": "Hello World", "text/html": "<p>Hello World</p>" }
+```
+
+_Expected payload format:_
+
+```json
+{ "text/plain": "SGVsbG8gV29ybGQ=", "text/html": "PHA+SGVsbG8gV29ybGQ8L3A+" }
+```
+
+- **Response:** JSON representation of the created `ClipboardEvent`.
+
+**Example:**
+
+Using `curl` and `jq` to encode string inputs to `base64` automatically:
+
+```bash
+payload=$(jq -n \
+  --arg text "Hello World" \
+  --arg html "<p>Hello World</p>" \
+  '{"text/plain": ($text | @base64), "text/html": ($html | @base64)}')
+
+curl --unix-socket /run/user/1000/yankd.sock \
+  -H "Content-Type: application/json" \
+  -d "$payload" \
+  "http://localhost/copy"
+```
+
 ### `POST /echo`
 
 Echoes the request body back to the client. Useful for testing the connection or
