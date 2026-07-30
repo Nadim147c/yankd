@@ -53,6 +53,20 @@ func NewServer(db *db.DB, cb *clipboard.Client) *Server {
 	return s
 }
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			slog.Debug("new request", "method", r.Method, "path", r.URL.Path)
+
+			start := time.Now()
+			next.ServeHTTP(w, r)
+
+			slog.Debug("request served", "method", r.Method, "path", r.URL.Path, "took", time.Since(start))
+		})
+	}
+	return next
+}
+
 // Listen accepts incoming connections and handles them until the context is
 // cancelled. The db parameter is currently ignored (reserved for future use).
 func (s *Server) Listen(ctx context.Context) error {
@@ -87,8 +101,10 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux.Handle("POST /set/{id}", s.SetEventHandler())
 	mux.Handle("POST /wipe", s.WipeDatabaseHandler())
 
+	handler := loggingMiddleware(mux)
+
 	httpServer := &http.Server{
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
