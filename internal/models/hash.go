@@ -71,13 +71,27 @@ func (h Hash) BigInt() *big.Int {
 func (h *Hash) Scan(v any) error {
 	switch v := v.(type) {
 	case *big.Int:
-		*h = Hash(v.Bytes())
+		*h = Hash(pad128(v.Bytes()))
 	case []byte:
-		*h = Hash(v)
+		*h = Hash(pad128(v))
 	default:
 		return errors.New("invalid error type")
 	}
 	return nil
+}
+
+// pad128 left-pads or truncates b to exactly 16 bytes.
+func pad128(b []byte) []byte {
+	if len(b) == 16 {
+		return b
+	}
+	p := make([]byte, 16)
+	if len(b) > 16 {
+		copy(p[:], b[len(b)-16:])
+	} else {
+		copy(p[16-len(b):], b)
+	}
+	return p
 }
 
 // Value implements the [driver.Valuer] interface.
