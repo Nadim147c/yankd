@@ -91,13 +91,19 @@ func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	return data, nil
 }
 
-// selectMime selects best mime for current clipboard item. Prefer image/* mimes
+// SelectMimeType selects best mime for current clipboard item. Prefer image/* mimes
 // with valid file extensions. Fallback: text/plain + ".txt".
-func selectMime(m []string) (mime string) {
+func SelectMimeType(m []string) (mime string) {
 	// First pass: look for image/*
 	for _, mt := range m {
 		mtype, _, _ := mimepkg.ParseMediaType(mt)
 		if strings.HasPrefix(mtype, "image/") {
+			return mt
+		}
+		if strings.HasPrefix(mtype, "video/") {
+			return mt
+		}
+		if strings.HasPrefix(mtype, "audio/") {
 			return mt
 		}
 	}
@@ -128,7 +134,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 	event.Time = time.Now()
 
 	// Set MIME type
-	event.MimeType = selectMime(c.mimes)
+	event.MimeType = SelectMimeType(c.mimes)
 
 	entries := make([]models.ClipboardEntry, 0, len(c.mimes))
 	for _, mime := range c.mimes {
