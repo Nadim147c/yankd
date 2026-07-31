@@ -162,7 +162,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 		entries = append(entries, entry)
 	}
 	event.Entries = entries
-	event.Preview = generatePreivew(entries)
+	event.Preview = GeneratePreivew(entries)
 
 	return event, nil
 }
