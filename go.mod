@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/dromara/carbon/v2 v2.6.16
 	github.com/duckdb/duckdb-go/v2 v2.10503.1
+	github.com/gabriel-vasile/mimetype v1.4.15
 	github.com/google/uuid v1.6.0
 	github.com/neurlang/wayland v0.3.0
 	github.com/spf13/cast v1.10.0

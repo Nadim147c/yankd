@@ -46,7 +46,7 @@ func (w *wordWritter) String() string {
 	return re.ReplaceAllString(w.buf.String(), " ")
 }
 
-func generatePreivew(entries []models.ClipboardEntry) string {
+func GeneratePreivew(entries []models.ClipboardEntry) string {
 	buf := &wordWritter{
 		buf:     bytes.NewBuffer(make([]byte, 0, maxPreviewLength)),
 		written: make(map[string]struct{}),
