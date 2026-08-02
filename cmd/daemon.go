@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/Nadim147c/yankd/internal/clipboard"
 	"github.com/Nadim147c/yankd/internal/db"
@@ -42,6 +43,24 @@ var daemonCommand = &cobra.Command{
 		var wg sync.WaitGroup
 
 		ipcServer := ipc.NewServer(db, wlClient)
+
+		wg.Go(func() {
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					n, err := db.DeleteDuplicates(ctx)
+					if err != nil {
+						slog.Error("failed to delete duplicates", "error", err)
+						continue
+					}
+					slog.Info("remove duplicates events", "affected", n)
+				}
+			}
+		})
 
 		wg.Go(func() {
 			err := wlClient.Listen(ctx, clips)
