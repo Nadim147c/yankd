@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-const maxPreviewLength = 1024 * 8 // 8KB
+const maxPreviewLength = 1024 * 8 // 8KiB
 
 var htmlTagsSortScore = []string{"alt", "content", "url", "src", "title", "href"}
 
@@ -41,9 +41,12 @@ func (w *wordWritter) WriteWords(words ...string) (done bool) {
 	return false
 }
 
+var re = regexp.MustCompile(`\s+`)
+
 func (w *wordWritter) String() string {
-	re := regexp.MustCompile(`\s+`)
-	return re.ReplaceAllString(w.buf.String(), " ")
+	b := bytes.ReplaceAll(w.buf.Bytes(), []byte{0x00}, []byte{})
+	b = re.ReplaceAll(b, []byte{' '})
+	return string(b)
 }
 
 func GeneratePreivew(entries []models.ClipboardEntry) string {
