@@ -138,8 +138,11 @@ ShellRoot {
                 id: entry
                 width: list.width
                 height: row.height + 5
-                required property int eventID
+                required property string mimeType
+                required property string eventID
                 required property string preview
+                required property string score
+                required property date time
                 property bool isCurrent: ListView.isCurrentItem
                 RowLayout {
                     id: row
@@ -148,7 +151,7 @@ ShellRoot {
                     spacing: 10
                     Text {
                         id: idTxt
-                        text: `${entry.eventID}`
+                        text: `${entry.score}`.padStart(3, "0")
                         color: "#dddddd"
                     }
                     Item {
@@ -159,7 +162,7 @@ ShellRoot {
                             color: "#dddddd"
                             elide: Text.ElideRight
                             textFormat: Text.PlainText
-                            text: `${entry.preview}`
+                            text: entry.preview || `${entry.mimeType} from ${Qt.formatDateTime(entry.time, "dd MMM yyyy")}`
                         }
                     }
                 }

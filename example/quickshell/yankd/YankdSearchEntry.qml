@@ -1,8 +1,9 @@
 import QtQuick
 
 QtObject {
-    property int eventID
+    property string eventID
     property string mimeType
-    property date time
     property string preview
+    property int score
+    property date time
 }

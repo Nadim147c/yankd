@@ -9,7 +9,7 @@ Singleton {
 
     property string binName: "yankd"
     function search(query: string) {
-        searchProc.exec([binName, "search", "--format=short-json", query]);
+        searchProc.exec([binName, "search", "--format=json", query]);
     }
 
     function set(query: string) {
@@ -39,7 +39,7 @@ Singleton {
     property string previewMimeType: ""
     property string preview: ""
     function updatePreview() {
-        previewProc.exec([binName, "get", "-pqb", `${searchResult[searchIndex].eventID}`]);
+        previewProc.exec([binName, "get", "--primary", "--quiet", "--base64", `${searchResult[searchIndex].eventID}`]);
     }
     property YankdSearchEntry currentEntry: searchResult[searchIndex]
     property list<YankdSearchEntry> searchResult
@@ -74,7 +74,8 @@ Singleton {
                         eventID: entry.id,
                         mimeType: entry.mime_type,
                         time: new Date(entry.time),
-                        preview: entry.preview
+                        preview: entry.preview,
+                        score: Math.round(entry.score)
                     }));
                 }
                 root.searchResult = res;
