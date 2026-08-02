@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"time"
 
@@ -66,29 +65,33 @@ func BuildQuery(q query.Query) (string, []any) {
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, primary_mime_type, time, preview,
-       rapidfuzz_ratio              (preview, ?)      as ratio_score,
-       rapidfuzz_osa_similarity     (preview, ?) * 10 as osa_score,
-       rapidfuzz_lcs_seq_similarity (preview, ?) * 10 as lcs_score,
-       rapidfuzz_prefix_similarity  (preview, ?)      as prefix_score,
-       rapidfuzz_postfix_similarity (preview, ?)      as suffix_score,
-       rapidfuzz_partial_ratio      (preview, ?)      as partial_score_prime,
-       partial_score_prime * list_min([length(preview)/length(?), 1]) as partial_score,
+    WITH params AS (
+        SELECT LOWER(?) AS search_term, LOWER(?) AS mime_term
+    ),
+    prepared_events AS (
+        SELECT *, LOWER(preview) AS lower_preview
+        FROM events
+    )
+    SELECT
+        id, primary_mime_type, time, preview,
+        rapidfuzz_ratio(lower_preview, params.search_term) as ratio_score,
+        rapidfuzz_osa_similarity(lower_preview, params.search_term) * 10 as osa_score,
+        rapidfuzz_lcs_seq_similarity(lower_preview, params.search_term) * 10 as lcs_score,
+        rapidfuzz_prefix_similarity(lower_preview, params.search_term) as prefix_score,
+        rapidfuzz_postfix_similarity(lower_preview, params.search_term) as suffix_score,
+        rapidfuzz_partial_ratio(lower_preview, params.search_term) as partial_score_prime,
 
-       rapidfuzz_ratio              (primary_mime_type, ?) as type_score,
+        partial_score_prime * list_min([length(preview) / length(params.search_term), 1]) as partial_score,
+        rapidfuzz_ratio(primary_mime_type, params.mime_term) as type_score,
 
-       ratio_score + partial_score + osa_score +
-       lcs_score + prefix_score + suffix_score + type_score as score
-    FROM events
-		WHERE score IS NOT NULL AND %s
-		ORDER BY score DESC
-		LIMIT ?;
-	`, whereClause)
+        ratio_score + partial_score + osa_score + lcs_score + prefix_score + suffix_score + type_score as score
+    FROM prepared_events, params
+    WHERE score IS NOT NULL AND %s
+    ORDER BY score DESC
+    LIMIT ?;
+`, whereClause)
 
-	previews := slices.Repeat([]any{q.Fuzzy}, 7)
-
-	args = append(args, q.Type, q.Limit)
-	return query, append(previews, args...)
+	return query, append(args, q.Fuzzy, q.Type, q.Limit)
 }
 
 // Search runs full-text search in database and returns matched items.
