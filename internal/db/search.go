@@ -67,12 +67,12 @@ func BuildQuery(q query.Query) (string, []any) {
 
 	query := fmt.Sprintf(`
 		SELECT id, primary_mime_type, time, preview,
-       rapidfuzz_ratio              (preview, ?) as ratio_score,
-       rapidfuzz_osa_similarity     (preview, ?) as osa_score,
-       rapidfuzz_lcs_seq_similarity (preview, ?) as lcs_score,
-       rapidfuzz_prefix_similarity  (preview, ?) as prefix_score,
-       rapidfuzz_postfix_similarity (preview, ?) as suffix_score,
-       rapidfuzz_partial_ratio      (preview, ?) as partial_score_prime,
+       rapidfuzz_ratio              (preview, ?)      as ratio_score,
+       rapidfuzz_osa_similarity     (preview, ?) * 10 as osa_score,
+       rapidfuzz_lcs_seq_similarity (preview, ?) * 10 as lcs_score,
+       rapidfuzz_prefix_similarity  (preview, ?)      as prefix_score,
+       rapidfuzz_postfix_similarity (preview, ?)      as suffix_score,
+       rapidfuzz_partial_ratio      (preview, ?)      as partial_score_prime,
        partial_score_prime * list_min([length(preview)/length(?), 1]) as partial_score,
 
        rapidfuzz_ratio              (primary_mime_type, ?) as type_score,
