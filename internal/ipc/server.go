@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/Nadim147c/yankd/internal/clipboard"
@@ -67,6 +68,28 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	return next
 }
 
+func crashOnPanic(next http.Handler, socketPath string) http.Handler {
+	const levelFatal = slog.LevelError + 4
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Crazy way to append a newline before stack trace!
+				var buf [8 * 1024]byte
+				buf[0] = '\n'
+				n := runtime.Stack(buf[1:], false)
+				// This log like this:
+				// >FATA panic in HTTP handler error="<panic value>"
+				// >goroutine 55 [running]:
+				// >...
+				slog.Log(context.Background(), levelFatal, "panic in HTTP handler", "error", err, "msg", string(buf[:n+1]))
+				_ = os.Remove(socketPath)
+				os.Exit(1)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Listen accepts incoming connections and handles them until the context is
 // canceled. The db parameter is currently ignored (reserved for future use).
 func (s *Server) Listen(ctx context.Context) error {
@@ -102,7 +125,9 @@ func (s *Server) Listen(ctx context.Context) error {
 	mux.Handle("POST /set/{id}", s.SetEventHandler())
 	mux.Handle("POST /wipe", s.WipeDatabaseHandler())
 
-	handler := loggingMiddleware(mux)
+	var handler http.Handler = mux
+	handler = loggingMiddleware(handler)
+	handler = crashOnPanic(handler, socketPath)
 
 	httpServer := &http.Server{
 		Handler:           handler,
