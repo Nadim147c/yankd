@@ -52,6 +52,45 @@ func newClipboardParser(
 	return &clipboardParser{offer, mimes}
 }
 
+// mimeReadTimeout is how long retrieveData waits for the next chunk of a MIME
+// type. A source may advertise a target and never answer it, which otherwise
+// blocks the read forever and stalls the whole watcher until the next
+// selection change. It is an idle timeout, reset after every successful read,
+// so a large payload that keeps streaming is never cut off.
+const mimeReadTimeout = time.Second
+
+// readWithIdleTimeout reads r until EOF and returns the data read. It gives up
+// once idleTimeout passes without new data; the caller must discard the data
+// when err is non-nil.
+func readWithIdleTimeout(r *os.File, idleTimeout time.Duration) ([]byte, error) {
+	var data []byte
+	buf := make([]byte, 32*1024)
+
+	for {
+		if err := r.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
+			return data, err
+		}
+
+		n, err := r.Read(buf)
+		if n > 0 {
+			data = append(data, buf[:n]...)
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return data, nil
+			}
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				return data, fmt.Errorf(
+					"idle timeout after %s with %d bytes read: %w",
+					idleTimeout, len(data), err,
+				)
+			}
+			return data, err
+		}
+	}
+}
+
 // retrieveData fetches data for a specific MIME type.
 func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	slog.Debug("retrieving data", "mime", mimeType)
@@ -80,7 +119,7 @@ func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	writer.Close() //nolint
 
 	// Read data from the read end
-	data, err := io.ReadAll(reader)
+	data, err := readWithIdleTimeout(reader, mimeReadTimeout)
 	reader.Close() //nolint
 
 	if err != nil {
@@ -165,7 +204,9 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 
 		v, err := c.retrieveData(mime)
 		if err != nil {
-			return event, err
+			// A single unreadable MIME type must not drop the whole event.
+			// retrieveData already logged the error.
+			continue
 		}
 		if len(v) == 0 {
 			continue
