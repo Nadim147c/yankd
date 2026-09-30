@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Nadim147c/yankd/internal/models"
 	"golang.org/x/net/html"
@@ -33,12 +34,27 @@ func (w *wordWritter) WriteWords(words ...string) (done bool) {
 		w.buf.WriteString(word)
 		w.buf.WriteByte(' ')
 		if w.buf.Len() > maxPreviewLength {
-			w.buf.Truncate(maxPreviewLength)
+			w.buf.Truncate(runeSafeLength(w.buf.Bytes(), maxPreviewLength))
 			w.done = true
 			return true
 		}
 	}
 	return false
+}
+
+// runeSafeLength returns n, or less when buf[:n] would end in the middle of a
+// multi-byte rune. Truncating mid-rune yields invalid UTF-8, which DuckDB
+// rejects when binding the preview as a VARCHAR.
+func runeSafeLength(buf []byte, n int) int {
+	if n > len(buf) {
+		n = len(buf)
+	}
+	// The buffer only holds valid UTF-8, so at most the last three bytes of an
+	// incomplete rune are dropped.
+	for n > 0 && !utf8.Valid(buf[:n]) {
+		n--
+	}
+	return n
 }
 
 var re = regexp.MustCompile(`\s+`)
