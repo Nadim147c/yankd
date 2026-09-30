@@ -126,6 +126,23 @@ func isBadMime(mime string) bool {
 	})
 }
 
+// controlTargets are X11 ICCCM meta targets, not clipboard content: TARGETS
+// answers with a list of names, TIMESTAMP with a number, and SAVE_TARGETS only
+// starts the clipboard-manager save handshake. GTK advertises SAVE_TARGETS but
+// never writes to the fd or closes it, which blocks retrieveData on the pipe
+// until the source dies. The uppercase X11 data targets (STRING, UTF8_STRING,
+// TEXT, COMPOUND_TEXT) are deliberately absent: they carry real text.
+var controlTargets = map[string]bool{
+	"SAVE_TARGETS":     true,
+	"TARGETS":          true,
+	"TIMESTAMP":        true,
+	"MULTIPLE":         true,
+	"DELETE":           true,
+	"INSERT_SELECTION": true,
+	"INSERT_PROPERTY":  true,
+	"LENGTH":           true,
+}
+
 // parse converts the retrieved data into a Clip struct.
 func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 	slog.Debug("parsing clipboard data")
@@ -142,7 +159,7 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 			return models.ClipboardEvent{}, ErrContainsSecrets
 		}
 
-		if isBadMime(mime) {
+		if isBadMime(mime) || controlTargets[mime] {
 			continue
 		}
 
