@@ -32,7 +32,7 @@ func (db *DB) DeleteDuplicates(ctx context.Context) (int64, error) {
       e.id AS event_id,
       ROW_NUMBER() OVER (
         PARTITION BY es.entry_set, e.preview
-        ORDER BY e."time" ASC, e.id ASC
+        ORDER BY e."time" DESC, e.id ASC
       ) AS rn
       FROM events e
       JOIN event_signatures es ON e.id = es.event_id
