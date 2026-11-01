@@ -15,6 +15,7 @@ import (
 
 type mimeHandler struct {
 	mu        sync.Mutex
+	id        wl.ProxyId
 	fromYankd bool
 	mimes     []string
 }
@@ -26,61 +27,70 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 	defer h.mu.Unlock()
 	h.fromYankd = h.fromYankd || e.MimeType == YankdMimeType
 	h.mimes = append(h.mimes, e.MimeType)
-	slog.Debug("mime type added", "mime", e.MimeType, "total", len(h.mimes))
+	slog.Debug("mime type added", "mime", e.MimeType, "id", h.id, "total", len(h.mimes))
 }
 
 // HandleZwlrDataControlDeviceV1DataOffer handles whenever new clipboard is
 // offered.
 func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataControlDeviceV1DataOfferEvent) {
-	slog.Debug("data offer received", "offer_id", e.Id.Id())
+	slog.Debug("data offer received", "id", e.Id.Id())
 
 	if c.paused.Load() {
 		slog.Debug("Skipping clipboard", "reason", "paused")
 		return
 	}
 
-	collector := &mimeHandler{}
+	collector := &mimeHandler{id: e.Id.Id()} //nolint
 	e.Id.AddOfferHandler(collector)
 
-	if err := wlclient.DisplayRoundtrip(c.display); err != nil {
+	if !c.mu.TryLock() {
+		slog.Debug("Skipping clipboard", "reason", "out-sync")
+		return
+	}
+	defer c.mu.Unlock()
+
+	err := wlclient.DisplayRoundtrip(c.display)
+	if err != nil {
 		if !c.closed.Load() {
-			slog.Error("registry roundtrip failed", "error", err)
+			slog.Error("registry roundtrip failed", "id", e.Id.Id(), "error", err)
 		}
 		return
 	}
 
-	slog.Info(
-		"mime types collected",
-		"offer_id", e.Id.Id(),
-		"count", len(collector.mimes),
-		"mimes", collector.mimes,
-		"from_yankd", collector.fromYankd,
-	)
+	slog.Debug("mime types collected", "id", e.Id.Id(), "count", len(collector.mimes), "mimes", collector.mimes)
 
 	if collector.fromYankd {
+		slog.Debug("clipboard is from yankd", "id", e.Id.Id())
+		return
+	}
+
+	if c.primarySelectionId.Load() == uint32(e.Id.Id()) {
+		slog.Debug("skipping primary selection data offer", "id", e.Id.Id())
 		return
 	}
 
 	parser := newClipboardParser(e.Id, collector.mimes)
 	event, err := parser.parse()
 	if err != nil {
-		slog.Error("failed to parse clipboard content", "offer_id", e.Id.Id(), "error", err)
+		slog.Error("failed to parse clipboard content", "id", e.Id.Id(), "error", err)
 		return
 	}
 
-	slog.Debug("clipboard content parsed successfully", "offer_id", e.Id.Id())
+	slog.Info("clipboard content parsed successfully", "id", e.Id.Id(), "primary-mime-type", event.MimeType, "entries", len(event.Entries))
 	c.eventChan <- event
 }
 
-// HandleZwlrDataControlDeviceV1Selection handles selection changes. Currently does nothing!
-func (c *Client) HandleZwlrDataControlDeviceV1Selection(protocol.ZwlrDataControlDeviceV1SelectionEvent) {
-	slog.Debug("selection changed")
+// HandleZwlrDataControlDeviceV1Selection handles selection changes.
+func (c *Client) HandleZwlrDataControlDeviceV1Selection(e protocol.ZwlrDataControlDeviceV1SelectionEvent) {
+	slog.Debug("classic selection changed", "id", e.Id.Id())
+	c.primarySelectionId.CompareAndSwap(uint32(e.Id.Id()), 0)
 }
 
 // HandleZwlrDataControlDeviceV1PrimarySelection handles primary selection
-// changes. Currently does nothing!
-func (c *Client) HandleZwlrDataControlDeviceV1PrimarySelection(protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
-	slog.Debug("primary selection changed")
+// changes.
+func (c *Client) HandleZwlrDataControlDeviceV1PrimarySelection(e protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
+	slog.Debug("primary selection changed", "id", e.Id.Id())
+	c.primarySelectionId.Store(uint32(e.Id.Id()))
 }
 
 // HandleRegistryGlobal handles wl_seat and zwlr_data_control_manager_v1 added.
