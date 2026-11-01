@@ -182,6 +182,9 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 		v, err := c.retrieveData(mime)
 		if err != nil {
 			slog.Warn("failed to retrieved data", "mime-type", mime, "error", err)
+			if mime == event.MimeType {
+				return models.ClipboardEvent{}, err
+			}
 			continue
 		}
 		if len(v) == 0 {
