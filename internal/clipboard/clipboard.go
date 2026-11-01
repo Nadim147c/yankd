@@ -31,6 +31,8 @@ type Client struct {
 	deviceName    uint32
 	deviceVersion uint32
 
+	primarySelectionId atomic.Uint32
+
 	connected atomic.Bool
 	closed    atomic.Bool
 	paused    atomic.Bool
