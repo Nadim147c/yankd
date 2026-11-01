@@ -18,7 +18,10 @@ import (
 	protocol "github.com/Nadim147c/yankd/internal/wlr-data-control-unstable-v1"
 )
 
-var ErrContainsSecrets = errors.New("clipboard content contains secrets")
+var (
+	ErrContainsSecrets = errors.New("clipboard content contains secrets")
+	ErrNoData          = errors.New("clipboard contains now data")
+)
 
 func containsPEMSecret(b []byte) bool {
 	for {
@@ -52,45 +55,6 @@ func newClipboardParser(
 	return &clipboardParser{offer, mimes}
 }
 
-// mimeReadTimeout is how long retrieveData waits for the next chunk of a MIME
-// type. A source may advertise a target and never answer it, which otherwise
-// blocks the read forever and stalls the whole watcher until the next
-// selection change. It is an idle timeout, reset after every successful read,
-// so a large payload that keeps streaming is never cut off.
-const mimeReadTimeout = time.Second
-
-// readWithIdleTimeout reads r until EOF and returns the data read. It gives up
-// once idleTimeout passes without new data; the caller must discard the data
-// when err is non-nil.
-func readWithIdleTimeout(r *os.File, idleTimeout time.Duration) ([]byte, error) {
-	var data []byte
-	buf := make([]byte, 32*1024)
-
-	for {
-		if err := r.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
-			return data, err
-		}
-
-		n, err := r.Read(buf)
-		if n > 0 {
-			data = append(data, buf[:n]...)
-		}
-
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return data, nil
-			}
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				return data, fmt.Errorf(
-					"idle timeout after %s with %d bytes read: %w",
-					idleTimeout, len(data), err,
-				)
-			}
-			return data, err
-		}
-	}
-}
-
 // retrieveData fetches data for a specific MIME type.
 func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	slog.Debug("retrieving data", "mime", mimeType)
@@ -109,18 +73,28 @@ func (c *clipboardParser) retrieveData(mimeType string) ([]byte, error) {
 	defer writer.Close()
 	defer reader.Close()
 
-	if err := c.offer.Receive(mimeType, writer.Fd()); err != nil {
-		reader.Close() //nolint
+	err = c.offer.Receive(mimeType, writer.Fd())
+	if err != nil {
 		slog.Error("receive request failed", "mime", mimeType, "error", err)
 		return nil, fmt.Errorf("receive request failed for %s: %w", mimeType, err)
 	}
 
-	// Close write end in this process
-	writer.Close() //nolint
+	err = reader.SetReadDeadline(time.Now().Add(time.Second / 2))
+	if err != nil {
+		return nil, err
+	}
 
-	// Read data from the read end
-	data, err := readWithIdleTimeout(reader, mimeReadTimeout)
-	reader.Close() //nolint
+	// Close write end in this process
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	limited := models.NewStrictLimitReader(reader, 32*1024*1024)
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
 
 	if err != nil {
 		slog.Error("failed to read data", "mime", mimeType, "error", err)
@@ -159,27 +133,30 @@ var badMimes = []*regexp.Regexp{
 	regexp.MustCompile(`microsoft`),
 }
 
-func isBadMime(mime string) bool {
-	return slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
-		return re.MatchString(mime)
-	})
-}
-
 // controlTargets are X11 ICCCM meta targets, not clipboard content: TARGETS
 // answers with a list of names, TIMESTAMP with a number, and SAVE_TARGETS only
 // starts the clipboard-manager save handshake. GTK advertises SAVE_TARGETS but
 // never writes to the fd or closes it, which blocks retrieveData on the pipe
 // until the source dies. The uppercase X11 data targets (STRING, UTF8_STRING,
 // TEXT, COMPOUND_TEXT) are deliberately absent: they carry real text.
-var controlTargets = map[string]bool{
-	"SAVE_TARGETS":     true,
-	"TARGETS":          true,
-	"TIMESTAMP":        true,
-	"MULTIPLE":         true,
-	"DELETE":           true,
-	"INSERT_SELECTION": true,
-	"INSERT_PROPERTY":  true,
-	"LENGTH":           true,
+var controlTargets = map[string]struct{}{
+	"SAVE_TARGETS":     {},
+	"TARGETS":          {},
+	"TIMESTAMP":        {},
+	"MULTIPLE":         {},
+	"DELETE":           {},
+	"INSERT_SELECTION": {},
+	"INSERT_PROPERTY":  {},
+	"LENGTH":           {},
+}
+
+func isBadMime(mime string) bool {
+	if _, ok := controlTargets[mime]; ok {
+		return ok
+	}
+	return slices.ContainsFunc(badMimes, func(re *regexp.Regexp) bool {
+		return re.MatchString(mime)
+	})
 }
 
 // parse converts the retrieved data into a Clip struct.
@@ -198,14 +175,16 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 			return models.ClipboardEvent{}, ErrContainsSecrets
 		}
 
-		if isBadMime(mime) || controlTargets[mime] {
+		if isBadMime(mime) {
 			continue
 		}
 
 		v, err := c.retrieveData(mime)
 		if err != nil {
-			// A single unreadable MIME type must not drop the whole event.
-			// retrieveData already logged the error.
+			slog.Warn("failed to retrieved data", "mime-type", mime, "error", err)
+			if mime == event.MimeType {
+				return models.ClipboardEvent{}, err
+			}
 			continue
 		}
 		if len(v) == 0 {
@@ -225,6 +204,11 @@ func (c *clipboardParser) parse() (models.ClipboardEvent, error) {
 		entry.Blob = v
 		entries = append(entries, entry)
 	}
+
+	if len(entries) == 0 {
+		return models.ClipboardEvent{}, ErrNoData
+	}
+
 	event.Entries = entries
 	event.Preview = GeneratePreivew(entries)
 
