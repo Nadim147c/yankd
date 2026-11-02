@@ -33,6 +33,10 @@ func (h *mimeHandler) HandleZwlrDataControlOfferV1Offer(
 // HandleZwlrDataControlDeviceV1DataOffer handles whenever new clipboard is
 // offered.
 func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataControlDeviceV1DataOfferEvent) {
+	if e.Id == nil {
+		return
+	}
+
 	slog.Debug("data offer received", "id", e.Id.Id())
 
 	if c.paused.Load() {
@@ -82,15 +86,19 @@ func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataContr
 
 // HandleZwlrDataControlDeviceV1Selection handles selection changes.
 func (c *Client) HandleZwlrDataControlDeviceV1Selection(e protocol.ZwlrDataControlDeviceV1SelectionEvent) {
-	slog.Debug("classic selection changed", "id", e.Id.Id())
-	c.primarySelectionId.CompareAndSwap(uint32(e.Id.Id()), 0)
+	if e.Id != nil {
+		slog.Debug("classic selection changed", "id", e.Id.Id())
+		c.primarySelectionId.CompareAndSwap(uint32(e.Id.Id()), 0)
+	}
 }
 
 // HandleZwlrDataControlDeviceV1PrimarySelection handles primary selection
 // changes.
 func (c *Client) HandleZwlrDataControlDeviceV1PrimarySelection(e protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
-	slog.Debug("primary selection changed", "id", e.Id.Id())
-	c.primarySelectionId.Store(uint32(e.Id.Id()))
+	if e.Id != nil {
+		slog.Debug("primary selection changed", "id", e.Id.Id())
+		c.primarySelectionId.Store(uint32(e.Id.Id()))
+	}
 }
 
 // HandleRegistryGlobal handles wl_seat and zwlr_data_control_manager_v1 added.
