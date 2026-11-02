@@ -81,14 +81,32 @@ func (c *Client) HandleZwlrDataControlDeviceV1DataOffer(e protocol.ZwlrDataContr
 }
 
 // HandleZwlrDataControlDeviceV1Selection handles selection changes.
+//
+// The offered object is nullable: the compositor sends a null id when there is
+// no selection at all (an empty clipboard, or the source client went away).
+// Such an event carries no data offer, so there is nothing to track here.
 func (c *Client) HandleZwlrDataControlDeviceV1Selection(e protocol.ZwlrDataControlDeviceV1SelectionEvent) {
+	if e.Id == nil {
+		slog.Debug("selection cleared")
+		return
+	}
+
 	slog.Debug("classic selection changed", "id", e.Id.Id())
 	c.primarySelectionId.CompareAndSwap(uint32(e.Id.Id()), 0)
 }
 
 // HandleZwlrDataControlDeviceV1PrimarySelection handles primary selection
 // changes.
+//
+// The offered object is nullable here as well: a cleared primary selection
+// means no primary offer is remembered any more.
 func (c *Client) HandleZwlrDataControlDeviceV1PrimarySelection(e protocol.ZwlrDataControlDeviceV1PrimarySelectionEvent) {
+	if e.Id == nil {
+		slog.Debug("primary selection cleared")
+		c.primarySelectionId.Store(0)
+		return
+	}
+
 	slog.Debug("primary selection changed", "id", e.Id.Id())
 	c.primarySelectionId.Store(uint32(e.Id.Id()))
 }
